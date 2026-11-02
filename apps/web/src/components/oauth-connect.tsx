@@ -2,53 +2,65 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DEMO_MODE, PRODUCT_NAME } from "@/lib/brand";
+import { PRODUCT_NAME } from "@/lib/brand";
 
-const DEMO_KEY = "ig_demo_meta_tokens";
+const SESSION_KEY = "rozpost_meta_connection";
 
-type DemoTokens = {
+type MetaConnection = {
   provider: "instagram_login";
   accessToken: string;
   igUserId: string;
   connectedAt: string;
   onboardingId?: string;
+  metaMode: "mock" | "live";
 };
 
 export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
-  const [tokens, setTokens] = useState<DemoTokens | null>(null);
+  const [connection, setConnection] = useState<MetaConnection | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DEMO_KEY);
-      if (raw) setTokens(JSON.parse(raw) as DemoTokens);
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) setConnection(JSON.parse(raw) as MetaConnection);
     } catch {
-      /* ignore */
+      /* ignore corrupt local session */
     }
   }, []);
 
-  async function connectDemo() {
+  async function connectInstagram() {
     setBusy(true);
+    setError(null);
     try {
-      const res = await fetch("/api/oauth/instagram/demo-connect", {
+      const res = await fetch("/api/v1/oauth/instagram/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onboardingId, demoMode: true }),
+        body: JSON.stringify({ onboardingId }),
       });
-      const data = (await res.json()) as DemoTokens & { error?: string };
-      if (!res.ok) throw new Error(data.error || "Connect failed");
-      localStorage.setItem(DEMO_KEY, JSON.stringify(data));
-      setTokens(data);
+      const data = (await res.json()) as MetaConnection & {
+        error?: { message?: string };
+        redirectUrl?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error?.message || "Instagram connect failed");
+      }
+      if (data.redirectUrl) {
+        window.location.assign(data.redirectUrl);
+        return;
+      }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+      setConnection(data);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Connect failed");
+      setError(e instanceof Error ? e.message : "Connect failed");
     } finally {
       setBusy(false);
     }
   }
 
   function disconnect() {
-    localStorage.removeItem(DEMO_KEY);
-    setTokens(null);
+    localStorage.removeItem(SESSION_KEY);
+    setConnection(null);
   }
 
   return (
@@ -71,26 +83,31 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
           .
         </li>
         <li>
-          Return here and connect with Instagram Login (demo mode stores fake
-          tokens locally for {PRODUCT_NAME}).
+          Return here and connect with Instagram Login. {PRODUCT_NAME} never asks
+          for your password.
         </li>
       </ol>
 
-      {tokens ? (
+      {error ? (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {connection ? (
         <div className="rounded-lg border border-[var(--line)] bg-white/80 p-5">
-          <p className="text-sm font-semibold text-[var(--brand)]">Connected (demo)</p>
+          <p className="text-sm font-semibold text-[var(--brand)]">
+            Instagram connected
+            {connection.metaMode === "mock" ? " (META_MODE=mock)" : ""}
+          </p>
           <dl className="mt-3 space-y-1 text-sm text-[var(--ink-muted)]">
             <div className="flex justify-between gap-4">
               <dt>Provider</dt>
-              <dd className="font-mono text-[var(--ink)]">{tokens.provider}</dd>
+              <dd className="font-mono text-[var(--ink)]">{connection.provider}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>IG user</dt>
-              <dd className="font-mono text-[var(--ink)]">{tokens.igUserId}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt>Token</dt>
-              <dd className="truncate font-mono text-[var(--ink)]">{tokens.accessToken}</dd>
+              <dd className="font-mono text-[var(--ink)]">{connection.igUserId}</dd>
             </div>
           </dl>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -98,7 +115,7 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
               Open dashboard
             </Link>
             <button type="button" className="btn-secondary" onClick={disconnect}>
-              Disconnect demo
+              Disconnect
             </button>
           </div>
         </div>
@@ -107,21 +124,16 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
           <button
             type="button"
             className="btn-primary disabled:opacity-60"
-            onClick={connectDemo}
+            onClick={connectInstagram}
             disabled={busy}
           >
-            {busy ? "Connecting…" : "Connect Instagram (demo)"}
+            {busy ? "Connecting…" : "Connect Instagram"}
           </button>
-          {!DEMO_MODE ? (
-            <p className="text-xs text-[var(--ink-muted)]">
-              Production will redirect to Instagram Business Login OAuth.
-            </p>
-          ) : (
-            <p className="text-xs text-[var(--ink-muted)]">
-              Demo mode: no real Meta OAuth. Fake long-lived tokens are stored in
-              this browser for walkthroughs.
-            </p>
-          )}
+          <p className="text-xs text-[var(--ink-muted)]">
+            Live mode redirects to Instagram Business Login. Mock mode
+            (`META_MODE=mock`) stores a local session for integration smoke tests
+            only — never used as a customer-facing path in production.
+          </p>
         </div>
       )}
     </div>

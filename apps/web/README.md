@@ -1,24 +1,35 @@
 # RozPost — `apps/web`
 
-Next.js (App Router) + TypeScript + Tailwind marketing site, onboarding, OAuth connect stub, SEO, and dashboard stub for the Instagram marketing automation MVP.
+Production Next.js (App Router) + TypeScript + Tailwind site: marketing, onboarding, Instagram connect, SEO, and analytics dashboard shell.
 
-**Brand:** RozPost · **Tagline:** WhatsApp photos → Instagram, every day · **Domain intent:** rozpost.com
+**Brand:** RozPost · **Tagline:** WhatsApp photos → Instagram, every day · **Domain:** rozpost.com
 
 ## Routes
 
 | Path | Purpose |
 | --- | --- |
-| `/` | SEO landing (Instagram promotional / automation India keywords) |
-| `/onboarding` | Business profile form → `POST /api/onboarding` |
-| `/connect` | Instagram Professional guide + demo OAuth connect |
-| `/dashboard` | Analytics placeholders |
-| `/blog` | SEO guide index |
-| `/blog/[slug]` | 3 articles (salons, clinics, local shops) |
-| `/robots.txt` | Crawler rules |
-| `/sitemap.xml` | Sitemap |
-| `/api/onboarding` | Mock BFF (forwards to Spring when `SPRING_API_URL` set) |
-| `/api/oauth/instagram/demo-connect` | Demo fake token mint |
-| `/api/dashboard/summary` | KPI placeholder JSON |
+| `/` | SEO landing (JSON-LD SoftwareApplication + LocalBusiness) |
+| `/onboarding` | Business profile → `POST /api/v1/onboarding` |
+| `/connect` | Professional guide + Instagram Login (`META_MODE`) |
+| `/dashboard` | Analytics KPI shell |
+| `/blog`, `/blog/[slug]` | SEO guides for Indian SMBs |
+| `/robots.txt`, `/sitemap.xml` | Crawler + sitemap |
+| `/api/v1/onboarding` | BFF → Spring or local fallback |
+| `/api/v1/oauth/instagram/connect` | Live redirect or mock session (`META_MODE`) |
+| `/api/v1/dashboard/summary` | KPI JSON |
+
+## Architecture
+
+```
+src/config          Externalized env
+src/domain          Onboarding types
+src/application     Use-cases / services
+src/infrastructure  Local store fallback (only when Spring unset)
+src/components      UI
+src/app             Next.js App Router (interfaces)
+```
+
+Typed `AppError`s, `x-correlation-id` on API responses, `/api/v1` versioning.
 
 ## Develop
 
@@ -29,22 +40,15 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Config
 
-## API proxy / Spring
+| Var | Meaning |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Canonical / OG base |
+| `META_MODE` / `NEXT_PUBLIC_META_MODE` | `mock` \| `live` |
+| `SPRING_API_URL` | Forward BFF to Spring Boot |
+| `NEXT_PUBLIC_INSTAGRAM_OAUTH_START_URL` | Live OAuth start when Spring unset |
 
-- Local route handlers under `src/app/api/**` serve the demo when Spring is not ready.
-- Set `SPRING_API_URL` to forward onboarding + dashboard summary to the Java API.
-- Extra proxy path: `/api/proxy/*` → `$SPRING_API_URL/api/*` (see `next.config.ts`).
+## SEO
 
-## SEO checklist
-
-- Meta title/description, Open Graph, Twitter cards, canonical via `src/lib/seo.ts`
-- JSON-LD: `SoftwareApplication` + `LocalBusiness` on the landing page
-- Semantic H1/H2, mobile-first hero, `next/font` swap for LCP-friendly text
-- `robots.ts` + `sitemap.ts`
-- Brand-safe copy: no guaranteed #1 ranking claims
-
-## Demo OAuth
-
-“Connect Instagram (demo)” stores a fake token in `localStorage` (`ig_demo_meta_tokens`) and marks onboarding status `oauth_connected` in the in-memory mock store. Production will redirect to Instagram Business Login.
+Meta title/description, Open Graph, Twitter cards, canonical, JSON-LD, semantic H1/H2, `robots.ts`, `sitemap.ts`. Brand-safe: no guaranteed #1 ranking claims. Deep keyword map applied from `docs/rozpost-seo-keyword-research.md` when present.

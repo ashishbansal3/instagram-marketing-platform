@@ -5,13 +5,13 @@ import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
   title: `Dashboard — ${PRODUCT_NAME}`,
-  description: `${PRODUCT_NAME} analytics dashboard stub: visits, reach, engagement placeholders for the demo.`,
+  description: `${PRODUCT_NAME} analytics dashboard: visits, reach, engagement, and publish queue.`,
   path: "/dashboard",
   noIndex: true,
 });
 
 const PLACEHOLDERS = [
-  { label: "Profile visits", value: "—", hint: "IG Insights sync (v1)" },
+  { label: "Profile visits", value: "—", hint: "IG Insights sync" },
   { label: "Reach (7d)", value: "—", hint: "Rolling window" },
   { label: "Engagement", value: "—", hint: "Likes + comments + saves" },
   { label: "Posts published", value: "—", hint: "Quota-aware count" },
@@ -28,9 +28,8 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="mt-3 max-w-xl text-[var(--ink-muted)]">
-            Analytics placeholders for the {PRODUCT_NAME} demo. Live Insights
-            sync ships in v1; this stub links the surface for tomorrow&apos;s
-            walkthrough.
+            Analytics for {PRODUCT_NAME}. Insights sync populates these KPIs once
+            Instagram is connected and the worker pipeline is running.
           </p>
         </div>
         <Link href="/connect" className="btn-secondary">
@@ -63,12 +62,12 @@ export default function DashboardPage() {
           </li>
           <li>
             <Link className="btn-secondary" href="/blog">
-              SEO guides
+              Guides
             </Link>
           </li>
           <li>
-            <a className="btn-secondary" href="/api/dashboard/summary">
-              GET /api/dashboard/summary
+            <a className="btn-secondary" href="/api/v1/dashboard/summary">
+              GET /api/v1/dashboard/summary
             </a>
           </li>
         </ul>

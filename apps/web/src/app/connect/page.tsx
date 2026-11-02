@@ -5,7 +5,7 @@ import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
   title: `Connect Instagram — ${PRODUCT_NAME}`,
-  description: `Connect your Professional Instagram account to ${PRODUCT_NAME}. Demo mode stores fake tokens; production uses Instagram Business Login.`,
+  description: `Connect your Professional Instagram account to ${PRODUCT_NAME} via Instagram Business Login. Official Meta APIs only.`,
   path: "/connect",
   noIndex: true,
 });

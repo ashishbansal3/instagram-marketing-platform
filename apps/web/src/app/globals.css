@@ -15,6 +15,8 @@
   --glow: rgba(11, 92, 84, 0.18);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
+  --font-hi: var(--font-devanagari), var(--font-body), sans-serif;
+  --font-pa: var(--font-gurmukhi), var(--font-body), sans-serif;
 }
 
 @layer base {
@@ -76,6 +78,14 @@
 
   .section-rule {
     @apply border-t border-[var(--line)];
+  }
+
+  .lang-hi {
+    font-family: var(--font-hi);
+  }
+
+  .lang-pa {
+    font-family: var(--font-pa);
   }
 
   .fade-up {

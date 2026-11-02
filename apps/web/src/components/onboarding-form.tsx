@@ -28,19 +28,23 @@ export function OnboardingForm() {
     const fd = new FormData(form);
 
     try {
-      const res = await fetch("/api/onboarding", {
+      const res = await fetch("/api/v1/onboarding", {
         method: "POST",
         body: fd,
       });
       const data = (await res.json().catch(() => ({}))) as {
         id?: string;
-        error?: string;
+        error?: { message?: string };
       };
       if (!res.ok) {
-        throw new Error(data.error || "Could not save onboarding. Try again.");
+        throw new Error(
+          data.error?.message || "Could not save onboarding. Try again.",
+        );
       }
-      const id = data.id || "demo";
-      router.push(`/connect?onboardingId=${encodeURIComponent(id)}`);
+      if (!data.id) {
+        throw new Error("Onboarding response missing id");
+      }
+      router.push(`/connect?onboardingId=${encodeURIComponent(data.id)}`);
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -109,7 +113,8 @@ export function OnboardingForm() {
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">
-          Optional photo <span className="text-[var(--ink-muted)]">(logo or storefront)</span>
+          Optional photo{" "}
+          <span className="text-[var(--ink-muted)]">(logo or storefront)</span>
         </span>
         <input
           className="field file:mr-3 file:rounded file:border-0 file:bg-[var(--paper-deep)] file:px-3 file:py-1.5 file:text-sm"

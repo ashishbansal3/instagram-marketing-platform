@@ -4,8 +4,8 @@ import { PRODUCT_NAME } from "@/lib/brand";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: `Onboarding — start your ${PRODUCT_NAME} profile`,
-  description: `Set up ${PRODUCT_NAME} for your salon, clinic, or shop: phone, business name, category, city, bio, and optional photo. Then connect Instagram.`,
+  title: `Onboarding — Instagram marketing service setup | ${PRODUCT_NAME}`,
+  description: `Start ${PRODUCT_NAME} onboarding for Instagram automation India: phone, business name, category, city, bio. Automatic Instagram post handler for salons and clinics — then Connect Instagram.`,
   path: "/onboarding",
 });
 

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Figtree } from "next/font/google";
+import {
+  Bricolage_Grotesque,
+  Figtree,
+  Noto_Sans_Devanagari,
+  Noto_Sans_Gurmukhi,
+} from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { PRODUCT_NAME, TAGLINE } from "@/lib/brand";
@@ -16,6 +21,21 @@ const body = Figtree({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
+});
+
+/** Hindi (Devanagari) + Punjabi (Gurmukhi) for India-first copy / captions UI. */
+const devanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  variable: "--font-devanagari",
+  display: "swap",
+  weight: ["400", "600", "700"],
+});
+
+const gurmukhi = Noto_Sans_Gurmukhi({
+  subsets: ["gurmukhi"],
+  variable: "--font-gurmukhi",
+  display: "swap",
+  weight: ["400", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -37,7 +57,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN">
-      <body className={`${display.variable} ${body.variable} antialiased`}>
+      <body
+        className={`${display.variable} ${body.variable} ${devanagari.variable} ${gurmukhi.variable} antialiased`}
+      >
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />
