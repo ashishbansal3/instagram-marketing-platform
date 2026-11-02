@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/{ig-user-id}/media",
+    "body": {
+      "image_url": "https://example.local/rozpost/output/POST_DEMO_001.jpg",
+      "caption": "Diwali glow-up at Demo Salon ✨ Book now",
+      "access_token": "***"
+    }
+  },
+  "response": {
+    "id": "IG_CONTAINER_DEMO_001"
+  }
+}

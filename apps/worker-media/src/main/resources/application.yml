@@ -1,0 +1,15 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: rozpost-worker-media
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+rozpost:
+  meta-mode: ${META_MODE:mock}
+  remotion-url: ${REMOTION_SERVICE_URL:http://localhost:3100}
+  api-base-url: ${API_BASE_URL:http://localhost:8080}

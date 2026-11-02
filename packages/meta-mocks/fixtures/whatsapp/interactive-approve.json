@@ -1,0 +1,45 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "WABA_DEMO_001",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550001111",
+              "phone_number_id": "PHONE_ID_DEMO"
+            },
+            "contacts": [
+              {
+                "profile": { "name": "Demo Salon Owner" },
+                "wa_id": "919876543210"
+              }
+            ],
+            "messages": [
+              {
+                "from": "919876543210",
+                "id": "wamid.DEMO_APPROVE_001",
+                "timestamp": "1730573000",
+                "type": "interactive",
+                "interactive": {
+                  "type": "button_reply",
+                  "button_reply": {
+                    "id": "approve_post_POST_DEMO_001",
+                    "title": "Approve"
+                  }
+                },
+                "context": {
+                  "from": "15550001111",
+                  "id": "wamid.DEMO_PREVIEW_001"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/IG_MEDIA_DEMO_001",
+    "fields": "id,permalink,timestamp"
+  },
+  "response": {
+    "id": "IG_MEDIA_DEMO_001",
+    "permalink": "https://www.instagram.com/p/DEMO_PERMALINK/",
+    "timestamp": "2026-11-02T12:00:00+0000"
+  }
+}

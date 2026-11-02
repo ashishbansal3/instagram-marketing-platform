@@ -1,0 +1,77 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;600;700&display=swap");
+
+:root {
+  --bg0: #0f1f1c;
+  --bg1: #17352e;
+  --ink: #f4efe6;
+  --muted: #b7c7c1;
+  --accent: #e2a86b;
+  --accent-2: #7bc4a8;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--ink);
+  font-family: Manrope, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #2a5a4c 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #5a3a1c 0%, transparent 50%),
+    linear-gradient(165deg, var(--bg0), var(--bg1));
+}
+
+.hero {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  gap: 1.25rem;
+  padding: 2.5rem clamp(1.25rem, 4vw, 4rem);
+  max-width: 1100px;
+}
+
+.brand {
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  margin: 0;
+}
+
+.headline {
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(1.4rem, 3vw, 2.1rem);
+  font-weight: 600;
+  max-width: 18ch;
+  margin: 0;
+}
+
+.sub {
+  color: var(--muted);
+  max-width: 42ch;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.cta-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
+
+.cta, .cta-secondary {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.35rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cta { background: var(--accent); color: #1b1208; }
+.cta-secondary { background: transparent; color: var(--ink); outline: 1px solid rgba(244,239,230,0.35); }
+
+.meta {
+  margin-top: 1.5rem;
+  color: var(--accent-2);
+  font-size: 0.9rem;
+}
