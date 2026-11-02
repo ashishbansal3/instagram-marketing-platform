@@ -2,32 +2,32 @@
   "object": "whatsapp_business_account",
   "entry": [
     {
-      "id": "WABA_DEMO_001",
+      "id": "WABA_FIXTURE_001",
       "changes": [
         {
           "value": {
             "messaging_product": "whatsapp",
             "metadata": {
               "display_phone_number": "15550001111",
-              "phone_number_id": "PHONE_ID_DEMO"
+              "phone_number_id": "PHONE_ID_FIXTURE"
             },
             "contacts": [
               {
-                "profile": { "name": "Demo Salon Owner" },
+                "profile": { "name": "Fixture Salon Owner" },
                 "wa_id": "919876543210"
               }
             ],
             "messages": [
               {
                 "from": "919876543210",
-                "id": "wamid.DEMO_IMAGE_001",
+                "id": "wamid.FIXTURE_IMAGE_001",
                 "timestamp": "1730572800",
                 "type": "image",
                 "image": {
                   "caption": "Make background soft peach, keep product sharp, Hindi caption for Diwali offer",
                   "mime_type": "image/jpeg",
-                  "sha256": "demo-sha256-image-001",
-                  "id": "MEDIA_ID_DEMO_IMAGE_001"
+                  "sha256": "fixture-sha256-image-001",
+                  "id": "MEDIA_ID_FIXTURE_IMAGE_001"
                 }
               }
             ]

@@ -1,14 +1,14 @@
 package com.rozpost.worker.media
 
+import com.rozpost.worker.media.application.MediaPipelineOrchestrator
+import com.rozpost.worker.media.infrastructure.RedisStreamPeek
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.runApplication
 import org.springframework.context.event.EventListener
-import org.springframework.data.redis.connection.stream.MapRecord
-import org.springframework.data.redis.connection.stream.StreamOffset
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -22,30 +22,34 @@ fun main(args: Array<String>) {
 
 @RestController
 class HealthController(
-    @Value("${rozpost.meta-mode:mock}") private val metaMode: String
+    @Value("\${rozpost.meta-mode:mock}") private val metaMode: String,
+    @Value("\${rozpost.app-env:local}") private val appEnv: String
 ) {
-    @GetMapping("/api/health")
-    fun health() = mapOf("service" to "rozpost-worker-media", "ok" to true, "metaMode" to metaMode)
+    @GetMapping("/api/v1/health")
+    fun health() = mapOf(
+        "service" to "rozpost-worker-media",
+        "ok" to true,
+        "metaMode" to metaMode,
+        "appEnv" to appEnv
+    )
 }
 
 @Component
-class StreamConsumer(
-    private val redis: StringRedisTemplate,
-    @Value("${rozpost.meta-mode:mock}") private val metaMode: String,
-    @Value("${rozpost.remotion-url:http://localhost:3100}") private val remotionUrl: String
+class BootProbe(
+    private val peek: RedisStreamPeek,
+    private val orchestrator: MediaPipelineOrchestrator,
+    @Value("\${rozpost.meta-mode:mock}") private val metaMode: String
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @EventListener(ApplicationReadyEvent::class)
     fun onReady() {
-        log.info("RozPost worker-media ready metaMode={} stream=media-download remotion={}", metaMode, remotionUrl)
-        // Skeleton: one non-blocking peek so compose boots cleanly; full consumer loop lands next.
+        MDC.put("correlationId", "boot-media-worker")
         try {
-            val records: List<MapRecord<String, Any, Any>> =
-                redis.opsForStream<Any, Any>().read(StreamOffset.latest("media-download")) ?: emptyList()
-            log.info("stream={} peeked {}", "media-download", records.size)
-        } catch (ex: Exception) {
-            log.warn("stream {} not ready yet: {}", "media-download", ex.message)
+            log.info("worker_media_ready metaMode={} strategies={}", metaMode, orchestrator.stepNames())
+            peek.peek("media-download")
+        } finally {
+            MDC.remove("correlationId")
         }
     }
 }

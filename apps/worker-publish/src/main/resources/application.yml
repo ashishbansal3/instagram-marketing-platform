@@ -9,7 +9,11 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
+logging:
+  pattern:
+    level: "%5p [corr=%X{correlationId}]"
+
 rozpost:
   meta-mode: ${META_MODE:mock}
-  remotion-url: ${REMOTION_SERVICE_URL:http://localhost:3100}
+  app-env: ${APP_ENV:local}
   api-base-url: ${API_BASE_URL:http://localhost:8080}

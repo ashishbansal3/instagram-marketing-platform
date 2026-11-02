@@ -7,7 +7,7 @@
     "header": {
       "type": "image",
       "image": {
-        "link": "https://example.local/rozpost/preview/POST_DEMO_001.jpg"
+        "link": "https://example.local/rozpost/preview/POST_FIXTURE_001.jpg"
       }
     },
     "body": {
@@ -15,8 +15,8 @@
     },
     "action": {
       "buttons": [
-        { "type": "reply", "reply": { "id": "approve_post_POST_DEMO_001", "title": "Approve" } },
-        { "type": "reply", "reply": { "id": "disapprove_post_POST_DEMO_001", "title": "Disapprove" } }
+        { "type": "reply", "reply": { "id": "approve_post_POST_FIXTURE_001", "title": "Approve" } },
+        { "type": "reply", "reply": { "id": "disapprove_post_POST_FIXTURE_001", "title": "Disapprove" } }
       ]
     }
   }

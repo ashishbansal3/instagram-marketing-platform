@@ -10,14 +10,14 @@ export default function HomePage() {
         Disapprove, then publishes to Instagram — official Meta APIs only.
       </p>
       <div className="cta-row">
-        <a className="cta" href={`${apiBase}/api/health`}>
+        <a className="cta" href={`${apiBase}/api/v1/health`}>
           API health
         </a>
         <a className="cta-secondary" href="https://github.com/ashishbansal3/instagram-marketing-platform">
           GitHub
         </a>
       </div>
-      <p className="meta">Demo mode: META_MODE=mock · docker compose up --build</p>
+      <p className="meta">Local: META_MODE=mock · APP_ENV=local · docker compose up --build</p>
     </main>
   );
 }

@@ -2,10 +2,11 @@
   "name": "rozpost",
   "private": true,
   "version": "0.1.0",
-  "description": "RozPost monorepo — WhatsApp to Instagram marketing automation",
+  "description": "RozPost production monorepo — WhatsApp to Instagram marketing automation",
   "scripts": {
     "test:mocks": "npm --prefix packages/meta-mocks test",
     "dev:web": "npm --prefix apps/web run dev",
-    "dev:remotion": "npm --prefix apps/remotion-service run dev"
+    "dev:remotion": "npm --prefix apps/remotion-service run dev",
+    "smoke": "./scripts/e2e-smoke.sh"
   }
 }

@@ -19,7 +19,7 @@ app.post("/assemble", (req, res) => {
     caption: caption || null,
     instructionText: instructionText || null,
     outputKey: postId ? `renders/${postId}/reel-stub.mp4` : null,
-    note: "RozPost Remotion stub — replace with real render pipeline"
+    note: "RozPost Remotion service — wire real Remotion render pipeline"
   });
 });
 

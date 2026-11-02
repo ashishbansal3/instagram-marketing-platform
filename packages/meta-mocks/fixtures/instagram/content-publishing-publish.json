@@ -3,11 +3,11 @@
     "method": "POST",
     "path": "/{ig-user-id}/media_publish",
     "body": {
-      "creation_id": "IG_CONTAINER_DEMO_001",
+      "creation_id": "IG_CONTAINER_FIXTURE_001",
       "access_token": "***"
     }
   },
   "response": {
-    "id": "IG_MEDIA_DEMO_001"
+    "id": "IG_MEDIA_FIXTURE_001"
   }
 }

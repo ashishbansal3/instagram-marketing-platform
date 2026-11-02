@@ -5,13 +5,16 @@ spring:
   application:
     name: rozpost-api
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/imp}
-    username: ${SPRING_DATASOURCE_USERNAME:imp}
-    password: ${SPRING_DATASOURCE_PASSWORD:imp}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/rozpost}
+    username: ${SPRING_DATASOURCE_USERNAME:rozpost}
+    password: ${SPRING_DATASOURCE_PASSWORD:rozpost}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 management:
   endpoints:
@@ -19,7 +22,12 @@ management:
       exposure:
         include: health,info
 
+logging:
+  pattern:
+    level: "%5p [corr=%X{correlationId}]"
+
 rozpost:
   meta-mode: ${META_MODE:mock}
-  webhook-verify-token: ${WEBHOOK_VERIFY_TOKEN:demo-verify}
-  meta-app-secret: ${META_APP_SECRET:demo-app-secret}
+  app-env: ${APP_ENV:local}
+  webhook-verify-token: ${WEBHOOK_VERIFY_TOKEN:}
+  meta-app-secret: ${META_APP_SECRET:}

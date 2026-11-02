@@ -105,7 +105,7 @@ export class MockWhatsAppClient {
 
 export function createMetaClients(mode = META_MODE) {
   if (mode === "live") {
-    throw new Error("Live Meta clients are not wired in the skeleton; set META_MODE=mock for demo.");
+    throw new Error("Live Meta clients are not wired in the skeleton; set META_MODE=mock for local META_MODE=mock.");
   }
   return {
     mode: "mock",
