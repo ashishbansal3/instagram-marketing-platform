@@ -1,20 +1,60 @@
 server:
-  port: 8081
+  port: ${WORKER_PORT:8081}
 
 spring:
   application:
     name: rozpost-worker-media
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
 
 logging:
   pattern:
-    level: "%5p [corr=%X{correlationId}]"
+    level: "%5p [correlationId=%X{correlationId} tenantId=%X{tenantId} jobId=%X{jobId} postId=%X{postId}]"
 
-rozpost:
-  meta-mode: ${META_MODE:mock}
-  app-env: ${APP_ENV:local}
-  remotion-url: ${REMOTION_SERVICE_URL:http://localhost:3100}
-  api-base-url: ${API_BASE_URL:http://localhost:8080}
+media:
+  work-dir: ${MEDIA_WORK_DIR:/tmp/media-work}
+  queues:
+    download: stream.media-download
+    enhance: stream.image-enhance
+    reel: stream.reel-render
+    dlq: stream.media-dlq
+    download-list: media-download
+    enhance-list: image-enhance
+    reel-list: reel-render
+  consumer:
+    enabled: ${MEDIA_CONSUMER_ENABLED:true}
+    poll-ms: ${MEDIA_POLL_MS:1000}
+    max-attempts: ${MEDIA_MAX_ATTEMPTS:5}
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    region: ${S3_REGION:us-east-1}
+    bucket: ${S3_BUCKET:imp-media}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:minioadmin}
+    public-base-url: ${S3_PUBLIC_BASE_URL:http://localhost:9000/imp-media}
+    path-style: ${S3_FORCE_PATH_STYLE:true}
+  enhance:
+    allow-mock-fallback: ${MEDIA_ALLOW_MOCK_FALLBACK:true}
+    photoroom-api-key: ${PHOTOROOM_API_KEY:}
+    fal-api-key: ${FAL_API_KEY:}
+    kling-api-key: ${KLING_API_KEY:}
+  remotion:
+    base-url: ${REMOTION_BASE_URL:${REMOTION_SERVICE_URL:http://localhost:3100}}
+  notify:
+    api-base-url: ${NOTIFY_API_BASE_URL:http://localhost:8080}
+    wa-mock-enabled: ${WA_MOCK_ENABLED:false}
+  resilience:
+    failure-threshold: ${MEDIA_CB_FAILURES:3}
+    open-duration-ms: ${MEDIA_CB_OPEN_MS:60000}
+
+shedlock:
+  enabled: ${SHEDLOCK_ENABLED:true}

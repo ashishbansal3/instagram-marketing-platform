@@ -81,3 +81,31 @@ cd instagram-marketing-platform
 cp .env.example .env
 docker compose up --build
 ```
+
+## Media pipeline (`apps/worker-media` + `apps/remotion-service`)
+
+Redis **Streams** (`stream.media-download` → `stream.image-enhance` → `stream.reel-render`) with consumer-group ACK, PEL, and `stream.media-dlq` after max attempts; legacy list keys are bridged.  
+Enhance uses Photoroom/fal when keys are set (Resilience4j CB/retry/bulkhead per provider); otherwise flag-gated **mock** sharpness + overlay (offline smoke (mock enhance flag)).  
+Reels: ffmpeg CLI 9:16 + Remotion captions (Noto Devanagari / Gurmukhi) with ffmpeg+Noto fallback.
+
+### Local (without full compose)
+
+```bash
+# Redis required for queue consumers; sync demo curl works with local FS if MinIO is down
+redis-server --daemonize yes   # or use compose redis
+
+cd apps/remotion-service && npm install && npm run dev   # :3100
+cd apps/worker-media && ./gradlew bootRun                # :8081
+```
+
+### Sample curl — process a fixture image
+
+```bash
+curl -sS -X POST 'http://localhost:8081/api/v1/media/process' \
+  -F 'file=@fixtures/sample-salon.jpg' \
+  -F 'instruction_text=ਗਰਮ ਸਟੂਡੀਓ ਲੁੱਕ — ਅੱਜ ਦੀ ਆਫਰ' \
+  -F 'locale=pa-IN' \
+  -F 'brand_name=Amritsar Glow Salon'
+```
+
+Expect `status: awaiting_approval`, preview URLs, and WA mock at `GET /api/v1/media/wa-mocks (only when WA_MOCK_ENABLED=true)`.

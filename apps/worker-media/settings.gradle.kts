@@ -1,1 +1,7 @@
-rootProject.name = "rozpost-worker-media"
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = "worker-media"

@@ -2,14 +2,33 @@
   "name": "@rozpost/remotion-service",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "description": "Minimal Remotion caption/reel assembly with Noto Devanagari & Gurmukhi",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "node src/server.js",
-    "start": "node src/server.js",
-    "build": "echo 'remotion compositions stub ok'",
-    "test": "node --test src/server.test.js"
+    "dev": "node --import tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --import tsx src/server.ts",
+    "studio": "remotion studio src/index.ts",
+    "test": "node --test src/server.test.mjs"
   },
   "dependencies": {
-    "express": "^4.21.0"
+    "@remotion/bundler": "4.0.221",
+    "@remotion/renderer": "4.0.221",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "multer": "^1.4.5-lts.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.221",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
   }
 }
