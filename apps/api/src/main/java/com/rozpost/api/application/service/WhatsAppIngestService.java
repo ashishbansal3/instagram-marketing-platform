@@ -83,6 +83,7 @@ public class WhatsAppIngestService {
         }
 
         UUID tenantId = resolveTenantId(from);
+        MDC.put("tenantId", tenantId.toString());
         ObjectNode payload = mapper.createObjectNode()
                 .put("from", from)
                 .put("type", type)

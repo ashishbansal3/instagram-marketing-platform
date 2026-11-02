@@ -670,6 +670,7 @@ Enforce via `tenants.plan` + `payments` status checked in `ig-publish` worker.
 | Groups / OBA — defer | [`whatsapp-groups-api-capabilities.md`](./whatsapp-groups-api-capabilities.md) |
 | Short calendar extract | [`instagram-platform-build-timeline.md`](./instagram-platform-build-timeline.md) |
 | Production practices (researched) | [`rozpost-production-best-practices.md`](./rozpost-production-best-practices.md) |
+| Production SEO keyword map | [`rozpost-seo-keyword-research.md`](./rozpost-seo-keyword-research.md) |
 
 *Re-verify live Meta Developer Dashboard, WhatsApp Manager rates, and App Review questionnaires before locking contracts with paying salons.*
 
@@ -812,12 +813,13 @@ Detailed sources: [`rozpost-production-best-practices.md`](./rozpost-production-
 
 ### 12.7 Next.js 2025 SEO notes (brief)
 
-Deep keyword map / Hindi-Punjabi / GBP: sibling SEO doc. Engineering minimums here:
+Deep keyword map / Hindi-Punjabi / GBP: sibling SEO doc §11 below + [`rozpost-seo-keyword-research.md`](./rozpost-seo-keyword-research.md). Engineering minimums here:
 
 - App Router **`metadata` / `generateMetadata`** on every public route (not client components); `metadataBase` absolute  
 - `app/sitemap.ts`, `app/robots.ts`, canonicals, OG/Twitter file conventions  
-- Server-rendered marketing HTML; `next/image` + `next/font` (Devanagari/Gurmukhi); protect CWV (LCP/CLS/INP)  
-- `robots: noindex` on dashboard/onboarding auth surfaces  
+- Server-rendered marketing HTML; `next/image` + `next/font` (Devanagari/Gurmukhi subsets); protect CWV (LCP/CLS/INP)  
+- **Index:** `/`, `/onboarding`, `/connect`, `/blog` (+ posts). **`noindex` only `/dashboard`** (and auth-only APIs) — onboarding is a public funnel page, not a private surface  
+
 
 ### 12.8 Vercel + Railway/Fly zero-downtime
 
@@ -829,3 +831,23 @@ Deep keyword map / Hindi-Punjabi / GBP: sibling SEO doc. Engineering minimums he
 | **Fly** | `[[http_service.checks]]` on `/health`; keep old machines if new check fails |
 | **Migrations** | Flyway **pre-deploy once** (expand/contract); never migrate from every replica on boot |
 | **Workers** | Graceful consumer cancel + ACK; ShedLock prevents double cron during overlap |
+
+---
+
+## 13) SEO decisions
+
+Full map, volumes, on-page, CWV/fonts, blog outlines, Punjab GBP, and new-site backlinks: [`rozpost-seo-keyword-research.md`](./rozpost-seo-keyword-research.md). Frontend punch-list: [`../internal/seo-apply-checklist.md`](../internal/seo-apply-checklist.md).
+
+| Decision | Choice |
+| --- | --- |
+| Primary organic wedge | **WhatsApp → Instagram** (EN + Hinglish), not head-term “Instagram scheduler” |
+| Early content focus | Vertical long-tails: salons, clinics, local shops (+ Punjab modifiers) |
+| Awkward seed phrases (“automatic Instagram handler”, etc.) | FAQ / glossary only — do not force into H1 |
+| Site language | **English-first** MVP; Hindi/Punjabi as snippets, captions, FAQ “also searched as”; no full bilingual IA yet |
+| Indexable routes | `/`, `/onboarding`, `/connect`, `/blog` (+ posts); **`/dashboard` = `noindex`** |
+| Metadata | Per-route Next.js Metadata API; JSON-LD `SoftwareApplication` + `HowTo` + `FAQPage` + `BlogPosting` |
+| CWV | LCP/INP/CLS budgets; `next/image` priority on hero; static/ISR marketing pages |
+| Indic fonts | `next/font` Noto Sans Devanagari / Gurmukhi with **script subsets**; `preload: false` unless page shows that script |
+| Local | Google Business Profile for Punjab operator entity; city pages only with unique copy (no doorways) |
+| Links | New-domain playbook: profiles → India directories → PH/Peerlist when usable → expert commentary; no PBNs |
+| Volume data | Public estimates until Keyword Planner / Ahrefs India pull replaces ranges |

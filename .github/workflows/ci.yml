@@ -6,6 +6,22 @@ on:
   pull_request:
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject committed .env
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$'; then
+            echo "Committed .env is forbidden" >&2
+            exit 1
+          fi
+          if grep -RInE 'BEGIN (RSA |OPENSSH )?PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|xox[baprs]-' \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude='*.md' . ; then
+            echo "Possible secret material detected" >&2
+            exit 1
+          fi
+
   meta-mocks:
     runs-on: ubuntu-latest
     defaults:
@@ -16,8 +32,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/meta-mocks/package-lock.json
       - run: npm ci || npm i
       - run: npm test
 
@@ -32,6 +46,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci || npm i
+      - run: npx tsc --noEmit
       - run: npm run lint --if-present
       - run: npm run build
 
@@ -46,7 +61,6 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci || npm i
-      - run: npm run build --if-present
       - run: npm test --if-present
 
   api:
@@ -62,6 +76,8 @@ jobs:
           java-version: "21"
       - run: chmod +x gradlew || true
       - run: ./gradlew test --no-daemon
+      - name: Flyway migrations present
+        run: test -f src/main/resources/db/migration/V1__core_schema.sql
 
   workers:
     runs-on: ubuntu-latest

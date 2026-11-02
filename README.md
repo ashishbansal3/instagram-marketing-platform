@@ -44,6 +44,12 @@ apps/remotion-service    Node Remotion microservice
 packages/meta-mocks      Shared WA / IG fixtures (META_MODE=mock only)
 ```
 
+## Docs
+
+- [`docs/rozpost-production-best-practices.md`](docs/rozpost-production-best-practices.md)
+- [`docs/agent-practice-checklist.md`](docs/agent-practice-checklist.md)
+- [`docs/architecture-skeleton.md`](docs/architecture-skeleton.md)
+
 ## Architecture notes
 
 - Layered packages: `domain` · `application` · `infrastructure` · `interfaces`
