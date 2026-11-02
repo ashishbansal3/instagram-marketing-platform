@@ -36,3 +36,6 @@ rozpost:
   meta-app-secret: ${META_APP_SECRET:}
   token-encryption-key: ${TOKEN_ENCRYPTION_KEY:}
   internal-api-token: ${INTERNAL_API_TOKEN:}
+  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}
+  publish-quota-per-day: ${PUBLISH_QUOTA_PER_DAY:25}
+  mock-auto-enhance: ${MOCK_AUTO_ENHANCE:true}

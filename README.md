@@ -18,7 +18,7 @@ docker compose up --build
 | Web (Next.js) | http://localhost:3000 |
 | API (Spring Boot) | http://localhost:8080 |
 | Remotion | http://localhost:3100 |
-| MinIO console | http://localhost:9001 (`minioadmin` / `minioadmin`) |
+| MinIO console | http://localhost:9001 |
 | Postgres | localhost:5432 |
 | Redis | localhost:6379 |
 
@@ -45,7 +45,7 @@ Onboarding: `POST /api/v1/onboarding` · Health: `GET /api/v1/health`
 apps/web                 Next.js (TypeScript, strict) — marketing + dashboard
 apps/api                 Spring Boot Java 21 — layered domain/application/infrastructure/interfaces
 apps/worker-media        Kotlin Spring Boot — media pipeline strategies
-apps/worker-publish      Kotlin Spring Boot — IG Content Publishing
+apps/worker-publish      Kotlin Spring Boot — IG Content Publishing + quota governor
 apps/remotion-service    Node Remotion microservice
 packages/meta-mocks      Shared WA / IG fixtures (META_MODE=mock only)
 ```
@@ -61,8 +61,9 @@ packages/meta-mocks      Shared WA / IG fixtures (META_MODE=mock only)
 - Layered packages: `domain` · `application` · `infrastructure` · `interfaces`
 - API versioning: `/api/v1/*` from day one
 - Correlation ID: `X-Correlation-Id` request filter → MDC `correlationId`
-- Domain events (bus stubs): `MediaReceived`, `MediaProcessed`, `Approved`, `Published`, `ReminderSent`
+- Domain events (bus): `MediaReceived`, `MediaProcessed`, `Approved`, `Disapproved`, `Published`, `ReminderSent`
 - Media steps via Strategy interfaces: enhance · caption · cut · publish
+- Publish targets use Strategy (`INSTAGRAM` now; `FACEBOOK` / `TIKTOK` stubs for Open/Closed extension)
 - DB: Flyway versioned migrations only (`apps/api/src/main/resources/db/migration`)
 - Config: env-externalized (see `.env.example`); no secrets in repo
 
@@ -73,13 +74,51 @@ packages/meta-mocks      Shared WA / IG fixtures (META_MODE=mock only)
 | `mock` | Use `packages/meta-mocks` fixtures + stubs (local/dev only) |
 | `live` | WhatsApp Cloud API + Instagram Graph with tokens from env |
 
-## Clone
+## Approval + publish
+
+```
+intake_received → media_processing → drafted → awaiting_approval
+  ├─ approve → publish_queued → publishing → published   (+ Published event)
+  └─ disapprove (+ text) → retry ≤3 → abandoned_needs_new_media
+```
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/v1/onboarding` | Tenant/client + IG connection row |
+| `POST` | `/api/v1/simulations/wa-message` | Mock-mode WA media+instructions (`META_MODE=mock`) |
+| `POST` | `/api/v1/approvals/wa-button` | `{ postId, button: approve\|disapprove, feedbackText? }` |
+| `GET` | `/api/v1/posts/{id}` | Status / permalink |
+
+Schema: Flyway `apps/api/src/main/resources/db/migration` (`V3__approval_publish.sql` additive).
+
+## Smoke E2E
 
 ```bash
-git clone https://github.com/ashishbansal3/instagram-marketing-platform.git
-cd instagram-marketing-platform
-cp .env.example .env
-docker compose up --build
+chmod +x scripts/e2e-smoke.sh
+./scripts/e2e-smoke.sh
+# optional disapprove path:
+SMOKE_DISAPPROVE_ONCE=1 ./scripts/e2e-smoke.sh
+```
+
+Exact curl flow:
+
+```bash
+API=http://localhost:8080
+curl -sS -X POST $API/api/v1/onboarding -H 'Content-Type: application/json' \
+  -d '{"businessName":"Salon","phoneE164":"+919876543210"}'
+curl -sS -X POST $API/api/v1/simulations/wa-message -H 'Content-Type: application/json' \
+  -d '{"waUserId":"919876543210","instructionText":"Soft beige background"}'
+# note postId, then:
+curl -sS -X POST $API/api/v1/approvals/wa-button -H 'Content-Type: application/json' \
+  -d '{"waUserId":"919876543210","postId":"<POST_ID>","button":"approve"}'
+curl -sS $API/api/v1/posts/<POST_ID>
+```
+
+## Tests
+
+```bash
+cd apps/api && /opt/gradle-8.11.1/bin/gradle test --no-daemon
+cd apps/worker-publish && /opt/gradle-8.11.1/bin/gradle test --no-daemon
 ```
 
 ## Media pipeline (`apps/worker-media` + `apps/remotion-service`)
