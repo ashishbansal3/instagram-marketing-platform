@@ -23,4 +23,9 @@ public class RozpostProperties {
     public void setTokenEncryptionKey(String tokenEncryptionKey) { this.tokenEncryptionKey = tokenEncryptionKey; }
     public String getInternalApiToken() { return internalApiToken; }
     public void setInternalApiToken(String internalApiToken) { this.internalApiToken = internalApiToken; }
+
+    /** True unless META_MODE=live — gates mocks / simulate endpoints. */
+    public boolean isMock() {
+        return !"live".equalsIgnoreCase(metaMode);
+    }
 }
