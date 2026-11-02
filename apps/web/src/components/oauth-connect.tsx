@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PRODUCT_NAME } from "@/lib/brand";
+import { apiFetch, errorMessageFromBody, type ApiErrorBody } from "@/lib/api-client";
 
 const SESSION_KEY = "rozpost_meta_connection";
 
 type MetaConnection = {
   provider: "instagram_login";
-  accessToken: string;
   igUserId: string;
   connectedAt: string;
   onboardingId?: string;
@@ -23,9 +23,19 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) setConnection(JSON.parse(raw) as MetaConnection);
+      if (raw) {
+        const parsed = JSON.parse(raw) as MetaConnection & { accessToken?: string };
+        // Never persist/display raw Meta tokens in the UI.
+        setConnection({
+          provider: parsed.provider,
+          igUserId: parsed.igUserId,
+          connectedAt: parsed.connectedAt,
+          onboardingId: parsed.onboardingId,
+          metaMode: parsed.metaMode,
+        });
+      }
     } catch {
-      /* ignore corrupt local session */
+      /* ignore */
     }
   }, []);
 
@@ -33,24 +43,29 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/v1/oauth/instagram/connect", {
+      const res = await apiFetch("/oauth/instagram/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ onboardingId }),
       });
-      const data = (await res.json()) as MetaConnection & {
-        error?: { message?: string };
-        redirectUrl?: string;
-      };
+      const data = (await res.json()) as MetaConnection &
+        ApiErrorBody & { redirectUrl?: string; accessToken?: string };
       if (!res.ok) {
-        throw new Error(data.error?.message || "Instagram connect failed");
+        throw new Error(errorMessageFromBody(data, "Instagram connect failed"));
       }
       if (data.redirectUrl) {
         window.location.assign(data.redirectUrl);
         return;
       }
-      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
-      setConnection(data);
+      const safe: MetaConnection = {
+        provider: data.provider,
+        igUserId: data.igUserId,
+        connectedAt: data.connectedAt,
+        onboardingId: data.onboardingId,
+        metaMode: data.metaMode,
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(safe));
+      setConnection(safe);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connect failed");
     } finally {
@@ -67,7 +82,7 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
     <div className="mx-auto flex max-w-xl flex-col gap-6">
       <ol className="list-decimal space-y-3 pl-5 text-sm text-[var(--ink-muted)]">
         <li>
-          Open the Instagram app → Settings → Account type and tools →{" "}
+          Open Instagram → Settings → Account type and tools →{" "}
           <strong className="text-[var(--ink)]">Switch to professional account</strong>.
         </li>
         <li>
@@ -83,8 +98,8 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
           .
         </li>
         <li>
-          Return here and connect with Instagram Login. {PRODUCT_NAME} never asks
-          for your password.
+          Return here and connect. {PRODUCT_NAME} never asks for your password
+          and never shows raw access tokens in the UI.
         </li>
       </ol>
 
@@ -130,9 +145,8 @@ export function OAuthConnect({ onboardingId }: { onboardingId?: string }) {
             {busy ? "Connecting…" : "Connect Instagram"}
           </button>
           <p className="text-xs text-[var(--ink-muted)]">
-            Live mode redirects to Instagram Business Login. Mock mode
-            (`META_MODE=mock`) stores a local session for integration smoke tests
-            only — never used as a customer-facing path in production.
+            Production uses Instagram Business Login (`META_MODE=live`). Mock
+            mode is for local smoke tests only.
           </p>
         </div>
       )}

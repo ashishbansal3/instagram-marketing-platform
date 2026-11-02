@@ -51,4 +51,12 @@ npm run dev
 
 ## SEO
 
-Meta title/description, Open Graph, Twitter cards, canonical, JSON-LD, semantic H1/H2, `robots.ts`, `sitemap.ts`. Brand-safe: no guaranteed #1 ranking claims. Deep keyword map applied from `docs/rozpost-seo-keyword-research.md` when present.
+Applied from store docs:
+- [`docs/rozpost-seo-keyword-research.md`](../../docs/rozpost-seo-keyword-research.md) (in project store / mirrored when synced)
+- Keyword map: WhatsApp→IG wedge, seed FAQ phrases, verticals
+- On-page titles/H1s for `/`, `/onboarding`, `/connect`, `/blog` (+ 8 posts)
+- JSON-LD: SoftwareApplication, LocalBusiness (Punjab), FAQPage, HowTo, BlogPosting
+- CWV: `next/font` swap, Indic fonts `preload: false`, static blog SSG
+- Brand-safe: no guaranteed #1 ranking claims
+
+See also `internal/seo-apply-checklist.md` in the Business project store.

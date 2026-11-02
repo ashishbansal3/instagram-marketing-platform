@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch, errorMessageFromBody, type ApiErrorBody } from "@/lib/api-client";
 
 const CATEGORIES = [
   "Beauty Salon",
@@ -28,17 +29,16 @@ export function OnboardingForm() {
     const fd = new FormData(form);
 
     try {
-      const res = await fetch("/api/v1/onboarding", {
+      const res = await apiFetch("/onboarding", {
         method: "POST",
         body: fd,
       });
       const data = (await res.json().catch(() => ({}))) as {
         id?: string;
-        error?: { message?: string };
-      };
+      } & ApiErrorBody;
       if (!res.ok) {
         throw new Error(
-          data.error?.message || "Could not save onboarding. Try again.",
+          errorMessageFromBody(data, "Could not save onboarding. Try again."),
         );
       }
       if (!data.id) {

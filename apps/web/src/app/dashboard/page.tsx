@@ -4,8 +4,8 @@ import { PRODUCT_NAME } from "@/lib/brand";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: `Dashboard — ${PRODUCT_NAME}`,
-  description: `${PRODUCT_NAME} analytics dashboard: visits, reach, engagement, and publish queue.`,
+  title: `Dashboard | ${PRODUCT_NAME}`,
+  description: `${PRODUCT_NAME} dashboard — posts, approvals, and insights.`,
   path: "/dashboard",
   noIndex: true,
 });
@@ -25,11 +25,11 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="brand-mark text-3xl text-[var(--brand-deep)] sm:text-4xl">
-            Dashboard
+            Your posts & approvals
           </h1>
           <p className="mt-3 max-w-xl text-[var(--ink-muted)]">
-            Analytics for {PRODUCT_NAME}. Insights sync populates these KPIs once
-            Instagram is connected and the worker pipeline is running.
+            Send photos on WhatsApp to fill this queue. Insights appear after
+            Instagram is connected and sync runs.
           </p>
         </div>
         <Link href="/connect" className="btn-secondary">
@@ -51,27 +51,6 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
-
-      <section className="mt-12 section-rule pt-10">
-        <h2 className="text-xl font-semibold">Quick links</h2>
-        <ul className="mt-4 flex flex-wrap gap-3 text-sm">
-          <li>
-            <Link className="btn-secondary" href="/onboarding">
-              Onboarding
-            </Link>
-          </li>
-          <li>
-            <Link className="btn-secondary" href="/blog">
-              Guides
-            </Link>
-          </li>
-          <li>
-            <a className="btn-secondary" href="/api/v1/dashboard/summary">
-              GET /api/v1/dashboard/summary
-            </a>
-          </li>
-        </ul>
-      </section>
     </div>
   );
 }

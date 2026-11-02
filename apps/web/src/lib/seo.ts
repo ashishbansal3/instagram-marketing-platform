@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
 import { DOMAIN_PRIMARY, PRODUCT_NAME, SITE_URL, TAGLINE } from "./brand";
 
-/** Primary SEO phrases for Indian local-business Instagram automation. */
+/** Seed + remapped keywords from docs/rozpost-seo-keyword-research.md */
 export const SEO_KEYWORDS = [
+  "WhatsApp to Instagram",
+  "WhatsApp se Instagram post",
+  "Instagram marketing for local businesses",
+  "Instagram marketing service",
+  "Instagram automation India",
+  "Instagram auto post",
   "Instagram promotional",
   "automatic Instagram handler",
   "automatic Instagram post handler",
   "Instagram automatic Facebook handler",
-  "Instagram automation India",
-  "Instagram marketing service",
   "Instagram marketing for salons",
-  "clinic Instagram automation",
-  "WhatsApp to Instagram posting",
-  "Instagram reels for local business",
-  "Punjab Instagram marketing",
-  "salon Instagram posts India",
-  "Instagram automatic posting service",
-  "AI Instagram handler India",
+  "Instagram marketing for clinics",
+  "Instagram Facebook cross posting",
+  "Instagram Professional account setup",
   "RozPost",
 ] as const;
 
-export const DEFAULT_DESCRIPTION = `${PRODUCT_NAME} — ${TAGLINE}. Instagram marketing service for Indian local businesses (salons, clinics, shops). Send photos on WhatsApp, approve polished drafts, publish with an automatic Instagram post handler. Optional Facebook cross-post. Official Meta APIs only.`;
+export const DEFAULT_DESCRIPTION =
+  "Send shop photos on WhatsApp. Approve AI drafts. Publish to Instagram daily — built for Indian salons, clinics, and local shops.";
+
+export const DEFAULT_TITLE =
+  "WhatsApp to Instagram for Local Businesses | RozPost";
 
 export function buildMetadata(opts: {
   title: string;
@@ -31,7 +35,7 @@ export function buildMetadata(opts: {
 }): Metadata {
   const description = opts.description ?? DEFAULT_DESCRIPTION;
   const path = opts.path ?? "/";
-  const url = `${SITE_URL}${path}`;
+  const url = `${SITE_URL}${path === "/" ? "/" : path}`;
   const ogImage = opts.ogImage ?? `${SITE_URL}/og.svg`;
   const fullTitle = opts.title.includes(PRODUCT_NAME)
     ? opts.title
@@ -88,10 +92,7 @@ export function softwareApplicationJsonLd() {
       "Optional Facebook Page cross-post",
       "Official Meta WhatsApp Cloud + Instagram Graph APIs",
     ],
-    areaServed: {
-      "@type": "Country",
-      name: "India",
-    },
+    areaServed: { "@type": "Country", name: "India" },
     inLanguage: ["en-IN", "hi-IN", "pa-IN"],
   };
 }
@@ -101,14 +102,58 @@ export function localBusinessJsonLd() {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: PRODUCT_NAME,
-    description: `${PRODUCT_NAME} — Instagram automation India. Marketing service helping salons, clinics, and shops publish promotional posts via WhatsApp. ${TAGLINE}.`,
+    description: `${PRODUCT_NAME} — Instagram marketing service for Indian local businesses. ${TAGLINE}. Service area: Punjab, India.`,
     url: SITE_URL,
     sameAs: [`https://${DOMAIN_PRIMARY}`],
     areaServed: [
       { "@type": "State", name: "Punjab" },
+      { "@type": "City", name: "Ludhiana" },
+      { "@type": "City", name: "Chandigarh" },
+      { "@type": "City", name: "Amritsar" },
       { "@type": "Country", name: "India" },
     ],
     priceRange: "₹₹",
     knowsLanguage: ["en", "hi", "pa"],
+  };
+}
+
+export function faqPageJsonLd(
+  faqs: { question: string; answer: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  };
+}
+
+export function howToConnectJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: "Connect Instagram Professional to RozPost",
+    description:
+      "Switch to Instagram Professional in the official app, then connect with Instagram Login.",
+    step: [
+      {
+        "@type": "HowToStep",
+        name: "Open Instagram settings",
+        text: "In the Instagram app go to profile → menu → Settings and privacy → Account type and tools.",
+      },
+      {
+        "@type": "HowToStep",
+        name: "Switch to professional account",
+        text: "Tap Switch to professional account, pick a category, choose Business or Creator.",
+      },
+      {
+        "@type": "HowToStep",
+        name: "Connect with RozPost",
+        text: "Return to RozPost and use Connect Instagram (Instagram Business Login). Optional: link a Facebook Page for cross-post.",
+      },
+    ],
   };
 }

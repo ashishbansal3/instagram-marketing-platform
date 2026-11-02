@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BLOG_POSTS } from "@/lib/blog";
-import { PRODUCT_NAME } from "@/lib/brand";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: `Guides — Instagram automation for Indian businesses`,
-  description: `Practical ${PRODUCT_NAME} guides on Instagram automation India for salons, clinics, and local shops — WhatsApp workflows and automatic Instagram handlers.`,
+  title: "Instagram Marketing Guides for Indian Local Businesses | RozPost Blog",
+  description:
+    "Guides on WhatsApp to Instagram, salon and clinic marketing, Professional setup, and safe Facebook cross-post for Indian shops.",
   path: "/blog",
 });
 
@@ -14,11 +14,15 @@ export default function BlogIndexPage() {
   return (
     <div className="site-shell py-12 sm:py-16">
       <h1 className="brand-mark text-3xl text-[var(--brand-deep)] sm:text-4xl">
-        Instagram automation guides
+        Guides: Instagram marketing for shops that run on WhatsApp
       </h1>
       <p className="mt-3 max-w-2xl text-[var(--ink-muted)]">
-        SEO articles for Indian local businesses exploring Instagram promotional
-        workflows with {PRODUCT_NAME}.
+        Practical Instagram marketing service playbooks for Indian local
+        businesses — then{" "}
+        <Link href="/onboarding" className="font-semibold text-[var(--brand)]">
+          start onboarding
+        </Link>
+        .
       </p>
       <ul className="mt-10 space-y-8">
         {BLOG_POSTS.map((post) => (
@@ -36,7 +40,7 @@ export default function BlogIndexPage() {
               href={`/blog/${post.slug}`}
               className="mt-3 inline-block text-sm font-semibold text-[var(--brand)]"
             >
-              Read article →
+              Read {post.primaryKeyword} guide →
             </Link>
           </li>
         ))}

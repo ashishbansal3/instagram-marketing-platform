@@ -7,8 +7,8 @@ import {
 } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { PRODUCT_NAME, TAGLINE } from "@/lib/brand";
-import { buildMetadata, DEFAULT_DESCRIPTION } from "@/lib/seo";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE } from "@/lib/seo";
+import { buildMetadata } from "@/lib/seo";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -23,12 +23,12 @@ const body = Figtree({
   display: "swap",
 });
 
-/** Hindi (Devanagari) + Punjabi (Gurmukhi) for India-first copy / captions UI. */
 const devanagari = Noto_Sans_Devanagari({
   subsets: ["devanagari"],
   variable: "--font-devanagari",
   display: "swap",
   weight: ["400", "600", "700"],
+  preload: false,
 });
 
 const gurmukhi = Noto_Sans_Gurmukhi({
@@ -36,17 +36,18 @@ const gurmukhi = Noto_Sans_Gurmukhi({
   variable: "--font-gurmukhi",
   display: "swap",
   weight: ["400", "600", "700"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
   ...buildMetadata({
-    title: `${PRODUCT_NAME} — ${TAGLINE}`,
+    title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
     path: "/",
   }),
   title: {
-    default: `${PRODUCT_NAME} — ${TAGLINE}`,
-    template: `%s | ${PRODUCT_NAME}`,
+    default: DEFAULT_TITLE,
+    template: `%s | RozPost`,
   },
 };
 
@@ -56,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-IN">
+    <html lang="en">
       <body
         className={`${display.variable} ${body.variable} ${devanagari.variable} ${gurmukhi.variable} antialiased`}
       >
