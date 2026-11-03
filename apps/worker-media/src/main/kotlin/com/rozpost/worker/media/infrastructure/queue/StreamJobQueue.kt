@@ -36,7 +36,9 @@ class StreamJobQueue(
 
     fun ensureGroup(stream: String) {
         try {
-            redis.opsForStream<String, String>().createGroup(stream, ReadOffset.latest(), group)
+            // 0-0: consume messages already XADD'd before this worker booted (CI race).
+            // latest() permanently skips those entries for a new consumer group.
+            redis.opsForStream<String, String>().createGroup(stream, ReadOffset.from("0-0"), group)
         } catch (_: Exception) {
             // group may already exist
         }
@@ -83,11 +85,21 @@ class StreamJobQueue(
 
     fun readGroup(stream: String, count: Int = 5): List<StreamMessage> {
         ensureGroup(stream)
-        val records = redis.opsForStream<String, String>().read(
+        // Reclaim our PEL first — lastConsumed() never redelivers unacked failures/hangs.
+        val pending = redis.opsForStream<String, String>().read(
             RedisConsumer.from(group, consumerName),
-            StreamReadOptions.empty().count(count.toLong()).block(Duration.ofMillis(200)),
-            StreamOffset.create(stream, ReadOffset.lastConsumed()),
-        ) ?: return emptyList()
+            StreamReadOptions.empty().count(count.toLong()),
+            StreamOffset.create(stream, ReadOffset.from("0")),
+        )
+        val records = if (!pending.isNullOrEmpty()) {
+            pending
+        } else {
+            redis.opsForStream<String, String>().read(
+                RedisConsumer.from(group, consumerName),
+                StreamReadOptions.empty().count(count.toLong()).block(Duration.ofMillis(200)),
+                StreamOffset.create(stream, ReadOffset.lastConsumed()),
+            ) ?: return emptyList()
+        }
         return records.map { rec ->
             val payload = rec.value["payload"] ?: ""
             val deliveries = deliveryCount(stream, rec.id)

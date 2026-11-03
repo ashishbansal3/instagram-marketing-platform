@@ -135,7 +135,8 @@ jobs:
           docker compose up --build -d postgres redis minio
           # Bucket also created via MINIO_DEFAULT_BUCKETS / ObjectStorageService if mc init fails.
           docker compose up --build -d minio-init || echo "minio-init skipped/failed — relying on app bucket create"
-          docker compose up --build -d api worker-media worker-publish remotion
+          # --wait blocks until healthchecks pass (api + worker-media) so smoke does not race JVM boot.
+          docker compose up --build -d --wait api worker-media worker-publish remotion
       - name: Wait for API health
         run: |
           for i in $(seq 1 90); do
@@ -147,6 +148,17 @@ jobs:
           done
           docker compose logs api worker-media worker-publish remotion | tail -200
           exit 1
+      - name: Confirm worker-media healthy
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose exec -T worker-media curl -sf http://localhost:8081/actuator/health >/dev/null; then
+              echo "worker-media ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose logs worker-media --no-color | tail -200
+          exit 1
       - name: e2e-smoke (webhook → media → approve → publish)
         run: |
           export API_BASE_URL=http://localhost:8080
@@ -154,7 +166,15 @@ jobs:
           ./scripts/e2e-smoke.sh
       - name: Compose logs on failure
         if: failure()
-        run: docker compose logs --no-color | tail -400
+        run: |
+          echo '==== worker-media ===='
+          docker compose logs worker-media --no-color | tail -250
+          echo '==== api ===='
+          docker compose logs api --no-color | tail -150
+          echo '==== remotion ===='
+          docker compose logs remotion --no-color | tail -80
+          echo '==== worker-publish (excl. scheduled_for noise if any) ===='
+          docker compose logs worker-publish --no-color | tail -80
       - name: Tear down
         if: always()
         run: docker compose down -v

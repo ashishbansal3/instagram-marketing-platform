@@ -33,16 +33,30 @@ class AppConfig(private val props: MediaProperties) {
         val credentials = StaticCredentialsProvider.create(
             AwsBasicCredentials.create(props.s3.accessKey, props.s3.secretKey),
         )
+        // Bound timeouts — unbounded S3 calls can block @Scheduled consumer threads forever.
         return S3Client.builder()
             .endpointOverride(URI.create(props.s3.endpoint))
             .region(Region.of(props.s3.region.ifBlank { "us-east-1" }))
             .credentialsProvider(credentials)
+            .overrideConfiguration { c ->
+                c.apiCallTimeout(java.time.Duration.ofSeconds(45))
+                    .apiCallAttemptTimeout(java.time.Duration.ofSeconds(20))
+            }
             .serviceConfiguration(
                 S3Configuration.builder()
                     .pathStyleAccessEnabled(props.s3.pathStyle)
                     .build(),
             )
             .build()
+    }
+
+    @Bean
+    fun taskScheduler(): org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler {
+        val scheduler = org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler()
+        scheduler.poolSize = 4
+        scheduler.setThreadNamePrefix("media-sched-")
+        scheduler.initialize()
+        return scheduler
     }
 
     @Bean

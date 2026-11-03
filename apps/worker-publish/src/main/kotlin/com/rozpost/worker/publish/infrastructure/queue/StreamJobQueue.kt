@@ -37,7 +37,8 @@ class StreamJobQueue(
 
     fun ensureGroup(stream: String) {
         try {
-            redis.opsForStream<String, String>().createGroup(stream, ReadOffset.latest(), group)
+            // 0-0: include messages XADD'd before this worker created the group.
+            redis.opsForStream<String, String>().createGroup(stream, ReadOffset.from("0-0"), group)
         } catch (_: Exception) {
             // group may already exist
         }
@@ -83,11 +84,20 @@ class StreamJobQueue(
 
     fun readGroup(stream: String, count: Int = 5): List<StreamMessage> {
         ensureGroup(stream)
-        val records = redis.opsForStream<String, String>().read(
+        val pending = redis.opsForStream<String, String>().read(
             RedisConsumer.from(group, consumerName),
-            StreamReadOptions.empty().count(count.toLong()).block(Duration.ofMillis(200)),
-            StreamOffset.create(stream, ReadOffset.lastConsumed()),
-        ) ?: return emptyList()
+            StreamReadOptions.empty().count(count.toLong()),
+            StreamOffset.create(stream, ReadOffset.from("0")),
+        )
+        val records = if (!pending.isNullOrEmpty()) {
+            pending
+        } else {
+            redis.opsForStream<String, String>().read(
+                RedisConsumer.from(group, consumerName),
+                StreamReadOptions.empty().count(count.toLong()).block(Duration.ofMillis(200)),
+                StreamOffset.create(stream, ReadOffset.lastConsumed()),
+            ) ?: return emptyList()
+        }
         return records.map { rec ->
             val payload = rec.value["payload"]
                 ?: rec.value["envelope"]

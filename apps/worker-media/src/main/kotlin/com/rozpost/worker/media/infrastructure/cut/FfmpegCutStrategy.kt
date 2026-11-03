@@ -50,11 +50,20 @@ class FfmpegCutStrategy : CutStrategy {
 
     private fun run(cmd: List<String>) {
         val proc = ProcessBuilder(cmd).redirectErrorStream(true).start()
-        val out = proc.inputStream.bufferedReader().readText()
+        // Drain stdout asynchronously — readText()-then-waitFor deadlocks the timeout.
+        val outFuture = java.util.concurrent.Executors.newSingleThreadExecutor().submit<String> {
+            proc.inputStream.bufferedReader().readText()
+        }
         val ok = proc.waitFor(120, TimeUnit.SECONDS)
         if (!ok) {
             proc.destroyForcibly()
+            outFuture.cancel(true)
             throw MediaProcessingException("ffmpeg timed out")
+        }
+        val out = try {
+            outFuture.get(5, TimeUnit.SECONDS)
+        } catch (_: Exception) {
+            ""
         }
         if (proc.exitValue() != 0) {
             throw MediaProcessingException("ffmpeg exit ${proc.exitValue()}: ${out.takeLast(1500)}")

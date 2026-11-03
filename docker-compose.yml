@@ -115,13 +115,12 @@ services:
       MOCK_MEDIA_PATH: /app/fixtures/sample-salon.jpg
       MEDIA_ALLOW_MOCK_FALLBACK: "true"
       WA_MOCK_ENABLED: "true"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rozpost}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rozpost}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
       REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-rozpost-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
       S3_PUBLIC_BASE_URL: http://minio:9000/${S3_BUCKET:-rozpost-media}
       S3_FORCE_PATH_STYLE: "true"
       REMOTION_SERVICE_URL: http://remotion:3100
@@ -135,6 +134,14 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
 
   worker-publish:
     build:
