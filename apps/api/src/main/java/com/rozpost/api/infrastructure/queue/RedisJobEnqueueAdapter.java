@@ -2,7 +2,7 @@ package com.rozpost.api.infrastructure.queue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.rozpost.api.application.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.JobEnqueuePort;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -64,8 +64,20 @@ public class RedisJobEnqueueAdapter implements JobEnqueuePort {
         idempotencyKey,
         json);
 
+    // Legacy list key for bridge; Streams use stream.<queue> (never dual-type the same Redis key).
     redis.opsForList().leftPush(queueName, json);
-    redis.opsForStream().add(queueName, Map.of("jobId", jobId.toString(), "envelope", json, "type", type));
+    String stream = queueName.startsWith("stream.") ? queueName : "stream." + queueName;
+    redis.opsForStream()
+        .add(
+            stream,
+            Map.of(
+                "payload", json,
+                "jobId", jobId.toString(),
+                "type", type,
+                "correlationId",
+                    payload.get("correlationId") == null
+                        ? ""
+                        : String.valueOf(payload.get("correlationId"))));
     return jobId;
   }
 }

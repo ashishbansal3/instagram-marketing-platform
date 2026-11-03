@@ -71,6 +71,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
@@ -94,8 +95,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
+      S3_PUBLIC_BASE_URL: http://minio:9000/${S3_BUCKET:-rozpost-media}
       REMOTION_SERVICE_URL: http://remotion:3100
       API_BASE_URL: http://api:8080
+      NOTIFY_API_BASE_URL: http://api:8080
     depends_on:
       - api
       - remotion
@@ -114,6 +118,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
       API_BASE_URL: http://api:8080
     depends_on:
       - api

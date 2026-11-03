@@ -1,6 +1,6 @@
 package com.rozpost.api.application.simulation;
 
-import com.rozpost.api.application.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.JobEnqueuePort;
 import com.rozpost.api.domain.event.MediaProcessed;
 import com.rozpost.api.domain.event.MediaReceived;
 import com.rozpost.api.domain.port.DomainEventBus;
@@ -96,7 +96,11 @@ public class WaSimulationService {
     dlPayload.put("instructionText", instruction);
     dlPayload.put("postId", postId.toString());
     dlPayload.put("metaMode", metaMode);
+    dlPayload.put("kind", "image");
     dlPayload.put("correlationId", correlationId);
+    // Mock pipeline can resolve WA media via fixture when MOCK_AUTO_ENHANCE=false.
+    dlPayload.put("fixturePath", "fixtures/sample-salon.jpg");
+    dlPayload.put("localPath", "fixtures/sample-salon.jpg");
 
     UUID dlJob =
         jobs.enqueue(

@@ -1,7 +1,7 @@
 package com.rozpost.api.application.approval;
 
-import com.rozpost.api.application.port.JobEnqueuePort;
-import com.rozpost.api.application.port.PostRepositoryPort;
+import com.rozpost.api.domain.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.approval.ApprovalDecision;
 import com.rozpost.api.domain.event.Approved;
 import com.rozpost.api.domain.event.Disapproved;

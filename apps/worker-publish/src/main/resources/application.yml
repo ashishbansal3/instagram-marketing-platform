@@ -21,10 +21,22 @@ rozpost:
   meta-mode: ${META_MODE:mock}
   app-env: ${APP_ENV:local}
   api-base-url: ${API_BASE_URL:http://localhost:8080}
-  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}
+  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}
   publish-poll-ms: ${PUBLISH_POLL_MS:1000}
   ig-container-poll-ms: ${IG_CONTAINER_POLL_MS:1500}
   ig-container-poll-max: ${IG_CONTAINER_POLL_MAX:40}
+
+publish:
+  consumer:
+    enabled: true
+    poll-ms: ${PUBLISH_POLL_MS:1000}
+    max-attempts: ${PUBLISH_MAX_ATTEMPTS:5}
+  queues:
+    publish: stream.ig-publish
+    delayed: stream.ig-publish-delayed
+    dlq: stream.ig-publish-dlq
+    publish-list: ig-publish
+    delayed-list: ig-publish-delayed
 
 resilience4j:
   circuitbreaker:

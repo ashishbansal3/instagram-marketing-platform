@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "==> Health / webhook verify"
 curl -sf "$API/actuator/health" >/dev/null || curl -sf "$API/api/v1/health" >/dev/null
-curl -sf "$API/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${WEBHOOK_VERIFY_TOKEN:-demo-verify}&hub.challenge=ok" | grep -q ok
+curl -sf "$API/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${WEBHOOK_VERIFY_TOKEN:-local-verify}&hub.challenge=ok" | grep -q ok
 
 echo "==> 1) Onboard"
 ONBOARD=$(curl -sS -X POST "$API/api/v1/onboarding" \

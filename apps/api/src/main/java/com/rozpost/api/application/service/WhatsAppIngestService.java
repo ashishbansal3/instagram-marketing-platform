@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.rozpost.api.application.approval.ApprovalCommandService;
-import com.rozpost.api.application.port.PostRepositoryPort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.event.JobQueued;
 import com.rozpost.api.domain.event.MediaReceived;
 import com.rozpost.api.domain.port.DomainEventBus;

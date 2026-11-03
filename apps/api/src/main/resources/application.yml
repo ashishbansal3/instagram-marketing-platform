@@ -36,6 +36,9 @@ rozpost:
   meta-app-secret: ${META_APP_SECRET:}
   token-encryption-key: ${TOKEN_ENCRYPTION_KEY:}
   internal-api-token: ${INTERNAL_API_TOKEN:}
-  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}
+  # Live Graph token placeholder — set in host secret store; never commit real values.
+  meta-graph-access-token: ${META_GRAPH_ACCESS_TOKEN:}
+  meta-graph-version: ${META_GRAPH_VERSION:v21.0}
+  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}
   publish-quota-per-day: ${PUBLISH_QUOTA_PER_DAY:25}
   mock-auto-enhance: ${MOCK_AUTO_ENHANCE:true}

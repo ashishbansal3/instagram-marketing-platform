@@ -113,12 +113,12 @@ class RedisConsumers(
                 postId = text(p, "postId") ?: text(p, "mediaAssetId") ?: env.jobId ?: "unknown-post",
                 sourceUrl = text(p, "sourceUrl") ?: text(p, "fixtureMediaUrl"),
                 localPath = text(p, "localPath") ?: text(p, "fixturePath"),
-                waMediaId = text(p, "waMediaId"),
-                instructionText = text(p, "instructionText"),
+                waMediaId = text(p, "waMediaId") ?: text(p, "mediaId"),
+                instructionText = text(p, "instructionText") ?: text(p, "instruction_text"),
                 locale = text(p, "locale") ?: "hi-IN",
-                kind = text(p, "kind") ?: "image",
+                kind = text(p, "kind") ?: text(p, "type") ?: "image",
                 idempotencyKey = env.idempotencyKey,
-                correlationId = env.correlationId ?: env.jobId,
+                correlationId = env.correlationId ?: text(p, "correlationId") ?: env.jobId,
             )
         }
         return mapper.readValue(json)

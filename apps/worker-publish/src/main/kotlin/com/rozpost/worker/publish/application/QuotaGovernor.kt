@@ -1,28 +1,45 @@
 package com.rozpost.worker.publish.application
 
+import com.rozpost.worker.publish.domain.QuotaSnapshot
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
-data class QuotaSnapshot(val usage: Int, val total: Int, val durationSeconds: Int) {
-    val remaining: Int get() = (total - usage).coerceAtLeast(0)
-    val nearLimit: Boolean get() = remaining <= 2
-}
-
 /**
- * Always trust live content_publishing_limit response — never hardcode quota_total.
+ * Always trust live/fixture content_publishing_limit — never hardcode quota_total.
+ * Used by [PublishJobProcessor] before every media_publish.
  */
 @Component
 class QuotaGovernor {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun allowPublish(snapshot: QuotaSnapshot, correlationId: String): Boolean {
-        if (snapshot.remaining <= 0) {
-            log.warn("quota_exhausted usage={} total={} correlationId={}", snapshot.usage, snapshot.total, correlationId)
-            return false
+    data class Decision(
+        val allow: Boolean,
+        val nearLimit: Boolean,
+        val remaining: Long,
+    )
+
+    fun decide(snapshot: QuotaSnapshot, correlationId: String?): Decision {
+        val remaining = (snapshot.total - snapshot.usage).coerceAtLeast(0)
+        // Near-limit: one slot left (product headroom for ≤1 feed + 1 reel/day).
+        val near = remaining == 1L
+        if (remaining <= 0L) {
+            log.warn(
+                "quota_exhausted usage={} total={} correlationId={}",
+                snapshot.usage,
+                snapshot.total,
+                correlationId,
+            )
+            return Decision(allow = false, nearLimit = false, remaining = 0)
         }
-        if (snapshot.nearLimit) {
-            log.info("quota_near_limit remaining={} correlationId={}", snapshot.remaining, correlationId)
+        if (near) {
+            log.info(
+                "quota_near_limit remaining={} usage={} total={} correlationId={}",
+                remaining,
+                snapshot.usage,
+                snapshot.total,
+                correlationId,
+            )
         }
-        return true
+        return Decision(allow = true, nearLimit = near, remaining = remaining)
     }
 }
