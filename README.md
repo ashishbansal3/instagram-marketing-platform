@@ -48,7 +48,7 @@ Health: `GET http://localhost:8080/api/v1/health`
 apps/web                 Next.js — marketing + dashboard + BFF
 apps/api                 Spring Boot Java 21
 apps/worker-media        Kotlin — Streams media pipeline
-apps/worker-publish      Kotlin — IG Content Publishing
+apps/worker-publish      Kotlin — IG Content Publishing (Streams)
 apps/remotion-service    Node Remotion captions/reel
 packages/meta-mocks      WA / IG fixtures (META_MODE=mock only)
 ```
@@ -65,8 +65,16 @@ GitHub Actions (`.github/workflows/ci.yml`):
 
 ## Docs
 
+- [`docs/deploy.md`](docs/deploy.md) — **AWS deploy** (S3 · ECS Fargate+ALB · RDS · ElastiCache · Amplify · GitHub OIDC)
 - [`docs/rozpost-production-best-practices.md`](docs/rozpost-production-best-practices.md)
 - [`docs/agent-practice-checklist.md`](docs/agent-practice-checklist.md)
+- [`docs/architecture-skeleton.md`](docs/architecture-skeleton.md)
+
+## Production deploy (AWS — scaffolding only)
+
+Primary hosting is **AWS + S3**. Templates under `infra/deploy/aws/` and `.github/workflows/deploy-aws.yml`.
+
+**Order:** migrate → api → workers → remotion → web
 
 ## META_MODE
 
@@ -74,3 +82,11 @@ GitHub Actions (`.github/workflows/ci.yml`):
 | --- | --- |
 | `mock` | WA Graph download stub + IG publish fixtures (`packages/meta-mocks`) |
 | `live` | WhatsApp Cloud API + Instagram Graph with tokens from env |
+
+## Approval + publish
+
+```
+intake_received → media_processing → awaiting_approval
+  ├─ approve → publish_queued → publishing → published
+  └─ disapprove (+ text) → retry ≤3 → abandoned_needs_new_media
+```

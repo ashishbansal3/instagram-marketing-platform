@@ -2,11 +2,11 @@ package com.rozpost.api.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.rozpost.api.application.approval.ApprovalCommandService;
-import com.rozpost.api.application.port.JobEnqueuePort;
-import com.rozpost.api.application.port.PostRepositoryPort;
 import com.rozpost.api.domain.event.JobQueued;
 import com.rozpost.api.domain.event.MediaReceived;
 import com.rozpost.api.domain.port.DomainEventBus;
+import com.rozpost.api.domain.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.post.PostStatus;
 import com.rozpost.api.infrastructure.config.RozpostProperties;
 import com.rozpost.api.infrastructure.logging.CorrelationIdFilter;
@@ -26,7 +26,7 @@ import java.util.UUID;
 
 /**
  * Durable WhatsApp ingest: resolve tenant from WA map (never trust client tenant_id),
- * idempotent receipt + media_assets + posts + jobs, then Redis list/stream enqueue + MediaReceived.
+ * idempotent receipt + media_assets + posts + jobs, then Redis list/stream enqueue via JobEnqueuePort.
  * Interactive approve/disapprove buttons route through ApprovalCommandService.
  */
 @Service
@@ -176,15 +176,12 @@ public class WhatsAppIngestService {
         payload.put("r2Key", r2Key);
         payload.put("locale", "hi-IN");
         payload.put("maxAttempts", 5);
-
+        // Metadata only — never use webhook JSON as localPath (masks WA download stub).
         if (fixturePath != null) {
-            // Webhook JSON fixture path is metadata only — never treat as image bytes.
             payload.put("fixturePath", fixturePath);
         } else if (props.isMock()) {
             payload.put("fixturePath", FIXTURE_INBOUND);
         }
-        // META_MODE=mock: worker resolves bytes via WhatsAppMediaDownloader(waMediaId).
-        // Do not set localPath here — that would mask a missing Graph/mock download stub.
 
         String idempotencyKey = "wamid:" + wamid;
         UUID jobId = jobs.enqueue(

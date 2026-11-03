@@ -80,6 +80,24 @@ class ObjectStorageService(
         return dest
     }
 
+    /** Checkpoint: object must exist in S3 or local fallback before enhance/cut. */
+    fun exists(key: String): Boolean {
+        if (storageReady) {
+            try {
+                s3.headObject(
+                    software.amazon.awssdk.services.s3.model.HeadObjectRequest.builder()
+                        .bucket(props.s3.bucket)
+                        .key(key)
+                        .build(),
+                )
+                return true
+            } catch (_: Exception) {
+                // fall through to local
+            }
+        }
+        return Files.isRegularFile(localRoot().resolve(key))
+    }
+
     fun publicUrl(key: String): String {
         if (!storageReady) {
             return "http://localhost:${System.getenv("WORKER_PORT") ?: "8081"}/api/v1/media/objects/$key"

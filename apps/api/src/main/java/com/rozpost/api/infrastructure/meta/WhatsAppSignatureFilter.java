@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -58,9 +57,10 @@ public class WhatsAppSignatureFilter extends OncePerRequestFilter {
             String header = request.getHeader("X-Hub-Signature-256");
             if (!verifier.verify(body, header)) {
                 response.setStatus(401);
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.setContentType("application/problem+json");
                 response.getWriter().write(
-                        "{\"title\":\"Unauthorized\",\"detail\":\"invalid WhatsApp signature\",\"status\":401,\"code\":\"invalid_signature\"}"
+                        "{\"title\":\"Unauthorized\",\"detail\":\"invalid WhatsApp signature\","
+                                + "\"status\":401,\"code\":\"WA_SIGNATURE_INVALID\"}"
                 );
                 return;
             }

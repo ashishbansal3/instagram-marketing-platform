@@ -1,0 +1,59 @@
+{
+  "family": "rozpost-worker-media",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-media-task",
+  "containerDefinitions": [
+    {
+      "name": "worker-media",
+      "image": "REPLACE_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/rozpost-worker-media:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8081, "protocol": "tcp" }],
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "AWS_REGION", "value": "ap-south-1" },
+        { "name": "WORKER_PORT", "value": "8081" },
+        { "name": "S3_BUCKET", "value": "REPLACE_MEDIA_BUCKET" },
+        { "name": "S3_REGION", "value": "ap-south-1" },
+        { "name": "S3_FORCE_PATH_STYLE", "value": "false" },
+        { "name": "S3_ACCESS_KEY", "value": "" },
+        { "name": "S3_SECRET_KEY", "value": "" }
+      ],
+      "secrets": [
+        {
+          "name": "REDIS_HOST",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/redis:host::"
+        },
+        {
+          "name": "PHOTOROOM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:PHOTOROOM_API_KEY::"
+        },
+        {
+          "name": "FAL_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:FAL_API_KEY::"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8081/api/v1/health || exit 1"
+        ],
+        "interval": 15,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 45
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rozpost-worker-media",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "media"
+        }
+      }
+    }
+  ]
+}

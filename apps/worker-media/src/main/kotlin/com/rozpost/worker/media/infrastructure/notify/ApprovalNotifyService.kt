@@ -32,15 +32,15 @@ class ApprovalNotifyService(
         )
 
         try {
-            var spec = http.post()
+            val token = System.getenv("INTERNAL_API_TOKEN") ?: ""
+            var req = http.post()
                 .uri("${props.notify.apiBaseUrl.trimEnd('/')}/api/v1/internal/posts/${result.postId}/assets-ready")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-Correlation-Id", result.correlationId ?: "")
-            val token = System.getenv("INTERNAL_API_TOKEN")
-            if (!token.isNullOrBlank()) {
-                spec = spec.header("X-Internal-Token", token)
+            if (token.isNotBlank()) {
+                req = req.header("X-Internal-Token", token)
             }
-            spec.body(payload).retrieve().toBodilessEntity()
+            req.body(payload).retrieve().toBodilessEntity()
             log.info("Notified API assets-ready postId={} correlationId={}", result.postId, result.correlationId)
         } catch (e: Exception) {
             log.error(

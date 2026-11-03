@@ -3,9 +3,9 @@ package com.rozpost.api.application.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rozpost.api.application.approval.ApprovalCommandService;
-import com.rozpost.api.application.port.JobEnqueuePort;
-import com.rozpost.api.application.port.PostRepositoryPort;
 import com.rozpost.api.domain.port.DomainEventBus;
+import com.rozpost.api.domain.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.infrastructure.config.RozpostProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,15 +54,8 @@ class WhatsAppIngestServiceTest {
     @BeforeEach
     void setUp() {
         props.setMetaMode("mock");
-        props.setMockMediaPath("fixtures/sample-salon.jpg");
         service = new WhatsAppIngestService(jdbc, jobs, eventBus, props, approval, posts);
         when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbc.update(anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(1);
-        when(jdbc.update(anyString(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
-        when(jdbc.update(anyString(), any(), any(), any(), any())).thenReturn(1);
-        when(jdbc.update(anyString(), any(), any())).thenReturn(1);
-        when(jdbc.update(anyString(), any())).thenReturn(1);
     }
 
     @Test

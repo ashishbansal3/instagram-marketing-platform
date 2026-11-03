@@ -107,36 +107,23 @@ class RedisConsumers(
         if (root.has("payload") && !root.has("sourceUrl") && !root.has("localPath")) {
             val env = mapper.treeToValue<JobEnvelope>(root)
             val p = env.payload ?: error("envelope missing payload")
-            // Prefer explicit image paths only. Never treat WhatsApp JSON fixtures as localPath
-            // (that would skip WhatsAppMediaDownloader / Graph download).
-            val rawLocal = text(p, "localPath") ?: text(p, "fixtureMediaPath")
             return MediaDownloadJob(
                 jobId = env.jobId ?: text(p, "jobId") ?: error("jobId required"),
                 tenantId = env.tenantId ?: text(p, "tenantId") ?: "unknown-tenant",
                 postId = text(p, "postId") ?: text(p, "mediaAssetId") ?: env.jobId ?: "unknown-post",
                 sourceUrl = text(p, "sourceUrl") ?: text(p, "fixtureMediaUrl"),
-                localPath = resolveReadableMediaPath(rawLocal),
+                // Never treat WhatsApp JSON fixtures as localPath — that skips WA Graph/mock download.
+                localPath = text(p, "localPath")?.takeUnless { it.endsWith(".json", ignoreCase = true) }
+                    ?: text(p, "fixtureMediaPath"),
                 waMediaId = text(p, "waMediaId") ?: text(p, "mediaId"),
                 instructionText = text(p, "instructionText") ?: text(p, "instruction_text"),
                 locale = text(p, "locale") ?: "hi-IN",
-                kind = text(p, "kind") ?: "image",
+                kind = text(p, "kind") ?: text(p, "type") ?: "image",
                 idempotencyKey = env.idempotencyKey,
                 correlationId = env.correlationId ?: text(p, "correlationId") ?: env.jobId,
             )
         }
-        val job = mapper.readValue<MediaDownloadJob>(json)
-        return job.copy(localPath = resolveReadableMediaPath(job.localPath))
-    }
-
-    /** Resolve explicit still paths only; ignore .json webhook fixtures. */
-    private fun resolveReadableMediaPath(raw: String?): String? {
-        if (raw.isNullOrBlank() || raw.endsWith(".json", ignoreCase = true)) return null
-        val path = java.nio.file.Path.of(raw)
-        return if (java.nio.file.Files.isRegularFile(path)) {
-            path.toAbsolutePath().normalize().toString()
-        } else {
-            null
-        }
+        return mapper.readValue(json)
     }
 
     private fun parseEnhance(json: String): ImageEnhanceJob {
