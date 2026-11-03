@@ -65,6 +65,8 @@ data class MediaProperties(
 
     data class Remotion(
         val baseUrl: String = "http://localhost:3100",
+        /** Shared with remotion-service; sent as X-Internal-Token when non-blank. */
+        val internalToken: String = "",
     )
 
     data class Notify(
