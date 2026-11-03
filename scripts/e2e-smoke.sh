@@ -33,6 +33,8 @@ ONBOARD=$(curl -sS -X POST "$API/api/v1/onboarding" \
   -d "{\"businessName\":\"Smoke Salon $SUFFIX\",\"phoneE164\":\"$PHONE\",\"city\":\"Ludhiana\",\"category\":\"salon\"}")
 echo "$ONBOARD" | tee /tmp/rozpost-onboard.json
 WA_USER=$(python3 -c 'import json; print(json.load(open("/tmp/rozpost-onboard.json"))["waUserId"])')
+TENANT_ID=$(python3 -c 'import json; print(json.load(open("/tmp/rozpost-onboard.json"))["tenantId"])')
+POST_HDR=(-H "X-Tenant-Id: $TENANT_ID")
 
 echo "==> 2) WA mock webhook (media + instruction) — exercises worker download stub"
 BODY=$(python3 - <<PY
@@ -57,7 +59,7 @@ test "$STATUS" = "queued_media_download"
 test -n "$POST_ID"
 
 # Fail fast if API short-circuited to awaiting_approval (mock-auto-enhance must be off).
-IMMEDIATE=$(curl -sS "$API/api/v1/posts/$POST_ID")
+IMMEDIATE=$(curl -sS "${POST_HDR[@]}" "$API/api/v1/posts/$POST_ID")
 IMMEDIATE_ST=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['status'])" "$IMMEDIATE")
 if [[ "$IMMEDIATE_ST" == "awaiting_approval" ]]; then
   echo "SMOKE FAILED: post already awaiting_approval right after webhook — mock-auto-enhance short-circuit?" >&2
@@ -66,10 +68,10 @@ if [[ "$IMMEDIATE_ST" == "awaiting_approval" ]]; then
 fi
 test "$IMMEDIATE_ST" = "media_processing"
 
-echo "==> 3) Wait for media-worker + assets-ready → awaiting_approval (postId=$POST_ID)"
+echo "==> 3) Wait for media-worker + assets-ready → awaiting_approval (postId=$POST_ID tenant=$TENANT_ID)"
 SAW_PROCESSING=0
 for i in $(seq 1 90); do
-  POST=$(curl -sS "$API/api/v1/posts/$POST_ID")
+  POST=$(curl -sS "${POST_HDR[@]}" "$API/api/v1/posts/$POST_ID")
   ST=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['status'])" "$POST")
   echo "  poll media $i: status=$ST"
   if [[ "$ST" == "media_processing" ]]; then
@@ -102,7 +104,7 @@ if [[ "${SMOKE_DISAPPROVE_ONCE:-0}" == "1" ]]; then
     -d "{\"waUserId\":\"$WA_USER\",\"postId\":\"$POST_ID\",\"button\":\"disapprove\",\"feedbackText\":\"Warmer tones please\"}" \
     | tee /tmp/rozpost-disapprove.json
   for i in $(seq 1 60); do
-    ST=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['status'])" "$(curl -sS "$API/api/v1/posts/$POST_ID")")
+    ST=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['status'])" "$(curl -sS "${POST_HDR[@]}" "$API/api/v1/posts/$POST_ID")")
     echo "  poll retry $i: status=$ST"
     [[ "$ST" == "awaiting_approval" ]] && break
     sleep 2
@@ -118,7 +120,7 @@ echo "$APPROVE" | tee /tmp/rozpost-approve.json
 
 echo "==> 5) Wait for Published + permalink"
 for i in $(seq 1 60); do
-  POST=$(curl -sS "$API/api/v1/posts/$POST_ID")
+  POST=$(curl -sS "${POST_HDR[@]}" "$API/api/v1/posts/$POST_ID")
   ST=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['status'])" "$POST")
   PERM=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('igPermalink') or '')" "$POST")
   echo "  poll publish $i: status=$ST permalink=$PERM"
@@ -131,5 +133,5 @@ for i in $(seq 1 60); do
 done
 
 echo "SMOKE FAILED: post did not reach published" >&2
-curl -sS "$API/api/v1/posts/$POST_ID" >&2 || true
+curl -sS "${POST_HDR[@]}" "$API/api/v1/posts/$POST_ID" >&2 || true
 exit 1

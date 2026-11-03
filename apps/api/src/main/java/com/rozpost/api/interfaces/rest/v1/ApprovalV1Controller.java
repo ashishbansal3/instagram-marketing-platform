@@ -10,12 +10,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
 public class ApprovalV1Controller {
+  /** Required on GET /posts/{id} — cross-tenant reads must 404. */
+  public static final String TENANT_HEADER = "X-Tenant-Id";
+
   private final ApprovalCommandService approval;
   private final JdbcTemplate jdbc;
 
@@ -61,8 +65,11 @@ public class ApprovalV1Controller {
   }
 
   @GetMapping("/posts/{id}")
-  public Map<String, Object> getPost(@PathVariable("id") UUID id) {
-    var snap = approval.snapshot(id);
+  public Map<String, Object> getPost(
+      @PathVariable("id") UUID id,
+      @RequestHeader(value = TENANT_HEADER, required = false) String tenantHeader) {
+    UUID tenantId = parseTenantHeader(tenantHeader);
+    var snap = approval.snapshotForTenant(id, tenantId);
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("id", snap.id());
     out.put("status", snap.status());
@@ -74,5 +81,16 @@ public class ApprovalV1Controller {
     out.put("igPermalink", snap.igPermalink());
     out.put("igMediaId", snap.igMediaId());
     return out;
+  }
+
+  private static UUID parseTenantHeader(String raw) {
+    if (raw == null || raw.isBlank()) {
+      throw ApiException.badRequest("missing_tenant", "X-Tenant-Id required");
+    }
+    try {
+      return UUID.fromString(raw.trim());
+    } catch (IllegalArgumentException ex) {
+      throw ApiException.badRequest("invalid_tenant", "X-Tenant-Id must be a UUID");
+    }
   }
 }

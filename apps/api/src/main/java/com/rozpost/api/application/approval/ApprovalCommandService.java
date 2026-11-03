@@ -222,6 +222,20 @@ public class ApprovalCommandService {
         .orElseThrow(() -> ApiException.notFound("post_not_found", "post not found: " + postId));
   }
 
+  /**
+   * Tenant-scoped snapshot for operator/API reads. Wrong or foreign tenant → same 404 as missing
+   * (no existence leak / IDOR).
+   */
+  public PostSnapshot snapshotForTenant(UUID postId, UUID tenantId) {
+    if (tenantId == null) {
+      throw ApiException.badRequest("missing_tenant", "X-Tenant-Id required");
+    }
+    return posts
+        .findByIdAndTenantId(postId, tenantId)
+        .map(PostSnapshot::from)
+        .orElseThrow(() -> ApiException.notFound("post_not_found", "post not found: " + postId));
+  }
+
   public record PostSnapshot(
       String id,
       String status,
