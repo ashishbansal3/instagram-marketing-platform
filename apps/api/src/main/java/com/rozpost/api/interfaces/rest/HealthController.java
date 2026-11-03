@@ -17,11 +17,13 @@ public class HealthController {
         this.props = props;
     }
 
+    /** Liveness/readiness probe for ALB / ECS (path configured in infra/deploy/aws). */
     @GetMapping("/health")
     public Map<String, Object> health() {
         return Map.of(
                 "service", "rozpost-api",
                 "ok", true,
+                "status", "UP",
                 "metaMode", props.getMetaMode(),
                 "appEnv", props.getAppEnv()
         );

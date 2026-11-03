@@ -1,0 +1,46 @@
+{
+  "family": "rozpost-remotion",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-remotion-task",
+  "containerDefinitions": [
+    {
+      "name": "remotion",
+      "image": "REPLACE_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/rozpost-remotion:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 3100, "protocol": "tcp" }],
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "REMOTION_PORT", "value": "3100" },
+        { "name": "REMOTION_MAX_CONCURRENT", "value": "2" }
+      ],
+      "secrets": [
+        {
+          "name": "REMOTION_INTERNAL_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:REMOTION_INTERNAL_TOKEN::"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:3100/health || exit 1"
+        ],
+        "interval": 15,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 45
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rozpost-remotion",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "remotion"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "family": "rozpost-worker-publish",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-publish-task",
+  "containerDefinitions": [
+    {
+      "name": "worker-publish",
+      "image": "REPLACE_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/rozpost-worker-publish:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8082, "protocol": "tcp" }],
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "META_MODE", "value": "mock" },
+        { "name": "AWS_REGION", "value": "ap-south-1" },
+        { "name": "SERVER_PORT", "value": "8082" }
+      ],
+      "secrets": [
+        {
+          "name": "SPRING_DATASOURCE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/rds:url::"
+        },
+        {
+          "name": "SPRING_DATASOURCE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/rds:username::"
+        },
+        {
+          "name": "SPRING_DATASOURCE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/rds:password::"
+        },
+        {
+          "name": "TOKEN_ENCRYPTION_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:TOKEN_ENCRYPTION_KEY::"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8082/api/v1/health || exit 1"
+        ],
+        "interval": 15,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 40
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rozpost-worker-publish",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "publish"
+        }
+      }
+    }
+  ]
+}

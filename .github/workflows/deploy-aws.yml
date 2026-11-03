@@ -1,0 +1,111 @@
+# Sketch only — does not deploy until Ashish creates AWS OIDC role + secrets.
+# No long-lived AWS access keys. Uses GitHub OIDC → IAM role.
+name: deploy-aws
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "AWS environment name (staging|production)"
+        required: true
+        default: "staging"
+      skip_migrate:
+        description: "Skip Flyway pre-deploy"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+
+jobs:
+  migrate:
+    if: ${{ !inputs.skip_migrate }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Pre-deploy Flyway
+        env:
+          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+          SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+        run: |
+          chmod +x scripts/pre-deploy-migrate.sh
+          ./scripts/pre-deploy-migrate.sh
+
+  build-and-deploy:
+    needs: [migrate]
+    if: always() && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    strategy:
+      max-parallel: 1
+      matrix:
+        include:
+          - name: api
+            dockerfile: apps/api/Dockerfile
+            ecr: rozpost-api
+            ecs_service: rozpost-api
+          - name: worker-media
+            dockerfile: apps/worker-media/Dockerfile
+            ecr: rozpost-worker-media
+            ecs_service: rozpost-worker-media
+          - name: worker-publish
+            dockerfile: apps/worker-publish/Dockerfile
+            ecr: rozpost-worker-publish
+            ecs_service: rozpost-worker-publish
+          - name: remotion
+            dockerfile: apps/remotion-service/Dockerfile
+            ecr: rozpost-remotion
+            ecs_service: rozpost-remotion
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE: ${{ matrix.ecr }}
+        run: |
+          docker build -f "${{ matrix.dockerfile }}" -t "$REGISTRY/$IMAGE:${{ github.sha }}" -t "$REGISTRY/$IMAGE:latest" .
+          docker push "$REGISTRY/$IMAGE:${{ github.sha }}"
+          docker push "$REGISTRY/$IMAGE:latest"
+      - name: Deploy ECS service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ secrets.ECS_CLUSTER_NAME }}" \
+            --service "${{ matrix.ecs_service }}" \
+            --force-new-deployment
+
+  web-amplify:
+    needs: [build-and-deploy]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Trigger Amplify job (sketch)
+        run: |
+          # Ashish: create Amplify app connected to this repo (apps/web).
+          # Either rely on Amplify GitHub integration, or:
+          # aws amplify start-job --app-id "$AMPLIFY_APP_ID" --branch-name main --job-type RELEASE
+          echo "Web deploy: Amplify Hosting for Next.js App Router (configure AMPLIFY_APP_ID in GitHub Environment)."

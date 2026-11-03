@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListTenantPrefixOnly",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::REPLACE_WITH_MEDIA_BUCKET"],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": ["tenants/*"]
+        }
+      }
+    },
+    {
+      "Sid": "ObjectRWUnderTenants",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": ["arn:aws:s3:::REPLACE_WITH_MEDIA_BUCKET/tenants/*"]
+    },
+    {
+      "Sid": "DenyPublicWriteViaBucketPolicyCompanion",
+      "Effect": "Deny",
+      "Action": ["s3:PutObject", "s3:PutObjectAcl"],
+      "Resource": ["arn:aws:s3:::REPLACE_WITH_MEDIA_BUCKET/*"],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::REPLACE_ACCOUNT_ID:role/rozpost-ecs-media-task"
+          ]
+        }
+      }
+    }
+  ]
+}

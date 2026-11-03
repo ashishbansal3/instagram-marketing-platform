@@ -52,9 +52,29 @@ packages/meta-mocks      Shared WA / IG fixtures (META_MODE=mock only)
 
 ## Docs
 
+- [`docs/deploy.md`](docs/deploy.md) — **AWS deploy** (S3 · ECS Fargate+ALB · RDS · ElastiCache · Amplify · GitHub OIDC)
 - [`docs/rozpost-production-best-practices.md`](docs/rozpost-production-best-practices.md)
 - [`docs/agent-practice-checklist.md`](docs/agent-practice-checklist.md)
 - [`docs/architecture-skeleton.md`](docs/architecture-skeleton.md)
+
+## Production deploy (AWS — scaffolding only)
+
+Primary hosting is **AWS + S3** (not Vercel/Railway/Fly/R2). Templates live under `infra/deploy/aws/` and `.github/workflows/deploy-aws.yml`. Ashish must create the AWS account pieces (OIDC role, bucket, RDS, ElastiCache, ECS) before any live apply.
+
+**Order:** migrate → api → workers → remotion → web
+
+```bash
+# Once against RDS (expand/contract Flyway — see docs/deploy.md)
+./scripts/pre-deploy-migrate.sh
+# Then roll ECS services (api, worker-media, worker-publish, remotion) and Amplify web.
+```
+
+| Probe | Path |
+| --- | --- |
+| API / workers | `GET /api/v1/health` |
+| Remotion | `GET /health` |
+
+Env keys: see `.env.example` (`AWS_REGION`, `S3_BUCKET`, RDS/Redis URLs). Production AWS access is via **IAM task role / GitHub OIDC** — leave `S3_ACCESS_KEY` / `S3_SECRET_KEY` empty in AWS.
 
 ## Architecture notes
 
@@ -89,7 +109,7 @@ intake_received → media_processing → drafted → awaiting_approval
 | `POST` | `/api/v1/approvals/wa-button` | `{ postId, button: approve\|disapprove, feedbackText? }` |
 | `GET` | `/api/v1/posts/{id}` | Status / permalink |
 
-Schema: Flyway `apps/api/src/main/resources/db/migration` (`V3__approval_publish.sql` additive).
+Schema: Flyway `apps/api/src/main/resources/db/migration` (`V3` intake + `V4` approval additive; expand/contract — see `docs/deploy.md`).
 
 ## Smoke E2E
 
