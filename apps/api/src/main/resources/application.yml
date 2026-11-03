@@ -43,3 +43,21 @@ rozpost:
   publish-quota-per-day: ${PUBLISH_QUOTA_PER_DAY:25}
   # false = enqueue real media-download jobs (compose E2E). true = simulation short-circuit only.
   mock-auto-enhance: ${MOCK_AUTO_ENHANCE:false}
+  api-public-base-url: ${API_PUBLIC_BASE_URL:${API_BASE_URL:http://localhost:8080}}
+  website:
+    use-llm: ${WEBSITE_USE_LLM:false}
+    job-poll-ms: ${WEBSITE_GBP_JOB_POLL_MS:1500}
+  sites:
+    local-root: ${SITE_LOCAL_ROOT:./data/sites}
+  s3:
+    bucket: ${S3_BUCKET:rozpost-media}
+    region: ${S3_REGION:ap-south-1}
+    endpoint: ${S3_ENDPOINT:}
+    force-path-style: ${S3_FORCE_PATH_STYLE:false}
+    public-base-url: ${S3_PUBLIC_BASE_URL:}
+    access-key: ${S3_ACCESS_KEY:}
+    secret-key: ${S3_SECRET_KEY:}
+  gbp:
+    access-token: ${GBP_ACCESS_TOKEN:}
+    account-name: ${GBP_ACCOUNT_NAME:}
+    api-base: ${GBP_API_BASE:https://mybusinessbusinessinformation.googleapis.com/v1}

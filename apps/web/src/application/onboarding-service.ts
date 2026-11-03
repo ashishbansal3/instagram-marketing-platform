@@ -10,7 +10,6 @@ import {
 } from "@/infrastructure/onboarding-store";
 import { env } from "@/config/env";
 import { CORRELATION_HEADER } from "@/lib/correlation";
-import { newCorrelationId } from "@/lib/api-client";
 
 function validate(input: CreateOnboardingInput): void {
   const missing = (
@@ -26,86 +25,92 @@ function validate(input: CreateOnboardingInput): void {
   }
 }
 
-type SpringOnboardResponse = {
-  clientId?: string;
-  tenantId?: string;
-  onboardingStatus?: string;
-  phoneE164?: string;
-  waUserId?: string;
-  tenantSlug?: string;
-  id?: string;
-};
-
-/** Map browser FormData fields → Spring /api/v1/onboarding JSON body. */
-function springPayloadFromForm(form: FormData): Record<string, string> {
+function formToSpringJson(form: FormData): Record<string, unknown> {
+  const phone = String(form.get("phone") ?? "").trim();
   return {
-    phoneE164: String(form.get("phone") ?? "").trim(),
+    phoneE164: phone,
+    phone,
     businessName: String(form.get("businessName") ?? "").trim(),
     category: String(form.get("category") ?? "").trim(),
     city: String(form.get("city") ?? "").trim(),
     bio: String(form.get("bio") ?? "").trim(),
+    services: String(form.get("services") ?? "").trim() || null,
+    address: String(form.get("address") ?? "").trim() || null,
+    hours: String(form.get("hours") ?? "").trim() || null,
     locale: "en-IN",
   };
 }
 
-async function forwardToSpring(form: FormData): Promise<Response> {
-  const payload = springPayloadFromForm(form);
-  const correlationId = newCorrelationId();
+async function forwardJsonToSpring(
+  payload: Record<string, unknown>,
+  correlationId?: string,
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (correlationId) {
+    headers[CORRELATION_HEADER] = correlationId;
+  }
   return fetch(`${env.springApiUrl}/api/v1/onboarding`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      [CORRELATION_HEADER]: correlationId,
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 }
 
 export async function createOnboardingFromFormData(
   form: FormData,
+  correlationId?: string,
 ): Promise<{ record: OnboardingRecord; source: "spring" | "local_fallback" }> {
+  const photo = form.get("photo");
+  const photoName =
+    photo && typeof photo === "object" && "name" in photo && "size" in photo && photo.size > 0
+      ? String(photo.name)
+      : null;
+
   if (env.springApiUrl) {
     try {
-      const upstream = await forwardToSpring(form);
-      const data = (await upstream.json().catch(() => ({}))) as SpringOnboardResponse & {
-        title?: string;
-        detail?: string;
-        message?: string;
-      };
+      const payload = formToSpringJson(form);
+      const upstream = await forwardJsonToSpring(payload, correlationId);
       if (upstream.ok) {
-        const id = data.clientId || data.id;
+        const data = (await upstream.json()) as {
+          id?: string;
+          clientId?: string;
+          phoneE164?: string;
+          phone?: string;
+          businessName?: string;
+          category?: string;
+          city?: string;
+          bio?: string;
+          status?: string;
+          onboardingStatus?: string;
+          websitePreviewUrl?: string | null;
+          websiteStatus?: string | null;
+          setupJobId?: string;
+        };
+        const id = data.id ?? data.clientId;
         if (!id) {
-          throw new AppError(
-            "UPSTREAM_INVALID",
-            "Spring onboarding response missing clientId",
-            502,
-          );
+          throw new AppError("UPSTREAM_UNAVAILABLE", "Onboarding API missing id", 502);
         }
         const record: OnboardingRecord = {
           id,
-          phone: String(data.phoneE164 ?? form.get("phone") ?? ""),
-          businessName: String(
-            form.get("businessName") ?? data.tenantSlug ?? "",
-          ),
-          category: String(form.get("category") ?? ""),
-          city: String(form.get("city") ?? ""),
-          bio: String(form.get("bio") ?? ""),
-          photoName: null,
+          phone: String(data.phone ?? data.phoneE164 ?? form.get("phone") ?? ""),
+          businessName: String(data.businessName ?? form.get("businessName") ?? ""),
+          category: String(data.category ?? form.get("category") ?? ""),
+          city: String(data.city ?? form.get("city") ?? ""),
+          bio: String(data.bio ?? form.get("bio") ?? ""),
+          photoName,
           status:
+            (data.status as OnboardingRecord["status"]) ??
             (data.onboardingStatus as OnboardingRecord["status"]) ??
             "profile_collected",
           createdAt: new Date().toISOString(),
+          websitePreviewUrl: data.websitePreviewUrl ?? null,
+          websiteStatus: data.websiteStatus ?? "pending",
+          setupJobId: data.setupJobId,
         };
-        // Keep a local mirror for connect/status UX when Spring is the source of truth.
         saveOnboarding(record);
         return { record, source: "spring" };
-      }
-      if (env.metaMode === "live") {
-        throw new AppError(
-          "UPSTREAM_ERROR",
-          data.detail || data.message || data.title || "Onboarding API error",
-          upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502,
-        );
       }
     } catch (err) {
       if (err instanceof AppError) throw err;
@@ -116,19 +121,8 @@ export async function createOnboardingFromFormData(
           502,
         );
       }
-      // META_MODE=mock: fall through to local only if Spring is unreachable.
     }
   }
-
-  const photo = form.get("photo");
-  const photoName =
-    photo &&
-    typeof photo === "object" &&
-    "name" in photo &&
-    "size" in photo &&
-    photo.size > 0
-      ? String(photo.name)
-      : null;
 
   const input: CreateOnboardingInput = {
     phone: String(form.get("phone") ?? "").trim(),
@@ -145,6 +139,8 @@ export async function createOnboardingFromFormData(
     ...input,
     status: "profile_collected",
     createdAt: new Date().toISOString(),
+    websitePreviewUrl: null,
+    websiteStatus: "pending_local",
   });
   return { record, source: "local_fallback" };
 }

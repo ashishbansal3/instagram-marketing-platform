@@ -25,33 +25,55 @@ public class OnboardingController {
 
     public record OnboardingRequest(
             String phoneE164,
+            String phone,
             String businessName,
             String category,
             String city,
             String bio,
+            String services,
+            String address,
+            String hours,
+            String hoursJson,
+            Double latitude,
+            Double longitude,
             String locale
     ) {}
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> create(@RequestBody OnboardingRequest req) {
-        if (req.phoneE164() == null || req.phoneE164().isBlank()) {
+        String phone = firstNonBlank(req.phoneE164(), req.phone());
+        if (phone == null || phone.isBlank()) {
             throw new IllegalArgumentException("phoneE164 required");
         }
         if (req.businessName() == null || req.businessName().isBlank()) {
             throw new IllegalArgumentException("businessName required");
         }
+        String hoursJson = firstNonBlank(req.hoursJson(), req.hours());
         return onboarding.onboard(new OnboardingService.Command(
-                req.phoneE164(),
+                phone,
                 req.businessName(),
                 req.category(),
                 req.city(),
-                req.locale()
+                req.locale(),
+                req.bio(),
+                req.services(),
+                req.address(),
+                hoursJson,
+                req.latitude(),
+                req.longitude()
         ));
     }
 
     @GetMapping("/{id}/status")
     public Map<String, Object> status(@PathVariable("id") UUID id) {
         return onboarding.status(id);
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) {
+            return a;
+        }
+        return b;
     }
 }

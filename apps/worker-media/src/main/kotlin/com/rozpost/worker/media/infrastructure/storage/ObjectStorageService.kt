@@ -73,7 +73,11 @@ class ObjectStorageService(
             if (storageReady) {
                 try {
                     s3.getObject(GetObjectRequest.builder().bucket(props.s3.bucket).key(key).build(), tmp)
-                    Files.move(tmp, dest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                    try {
+                        Files.move(tmp, dest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                    } catch (_: Exception) {
+                        Files.move(tmp, dest, StandardCopyOption.REPLACE_EXISTING)
+                    }
                     return dest
                 } catch (e: Exception) {
                     log.warn("S3 get failed for {}, trying local: {}", key, e.message)

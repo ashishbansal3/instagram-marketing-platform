@@ -7,6 +7,7 @@ import com.rozpost.api.domain.event.DomainEvent;
 import com.rozpost.api.domain.event.JobQueued;
 import com.rozpost.api.domain.event.MediaProcessed;
 import com.rozpost.api.domain.event.MediaReceived;
+import com.rozpost.api.domain.event.OnboardingCompleted;
 import com.rozpost.api.domain.event.Published;
 import com.rozpost.api.domain.event.ReminderSent;
 import com.rozpost.api.domain.port.DomainEventBus;
@@ -92,6 +93,7 @@ public class LoggingDomainEventBus implements DomainEventBus {
             case "Approved", "Disapproved", "Published", "MediaProcessed", "ReminderSent" -> "post";
             case "JobQueued" -> "job";
             case "MediaReceived" -> "media";
+            case "OnboardingCompleted" -> "client";
             default -> "domain";
         };
     }
@@ -118,6 +120,9 @@ public class LoggingDomainEventBus implements DomainEventBus {
         }
         if (event instanceof JobQueued j) {
             return j.jobId();
+        }
+        if (event instanceof OnboardingCompleted oc) {
+            return oc.clientId();
         }
         if (event instanceof MediaReceived) {
             return event.tenantId() != null ? event.tenantId() : UUID.randomUUID();
