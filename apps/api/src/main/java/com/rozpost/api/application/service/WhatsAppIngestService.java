@@ -3,7 +3,8 @@ package com.rozpost.api.application.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.rozpost.api.domain.event.Approved;
+import com.rozpost.api.application.approval.ApprovalCommandService;
+import com.rozpost.api.application.port.PostRepositoryPort;
 import com.rozpost.api.domain.event.JobQueued;
 import com.rozpost.api.domain.event.MediaReceived;
 import com.rozpost.api.domain.port.DomainEventBus;
@@ -27,7 +28,7 @@ import java.util.UUID;
 /**
  * Durable WhatsApp ingest: resolve tenant from WA map (never trust client tenant_id),
  * idempotent receipt + media_assets + jobs, then Redis Stream enqueue + MediaReceived.
- * Returns quickly so webhook can ACK 200 (Meta retries ~7d on failure).
+ * Interactive approve/disapprove buttons route through ApprovalCommandService.
  */
 @Service
 public class WhatsAppIngestService {
@@ -41,19 +42,25 @@ public class WhatsAppIngestService {
     private final StringRedisTemplate redis;
     private final DomainEventBus eventBus;
     private final RozpostProperties props;
+    private final ApprovalCommandService approval;
+    private final PostRepositoryPort posts;
 
     public WhatsAppIngestService(
             ObjectMapper mapper,
             JdbcTemplate jdbc,
             StringRedisTemplate redis,
             DomainEventBus eventBus,
-            RozpostProperties props
+            RozpostProperties props,
+            ApprovalCommandService approval,
+            PostRepositoryPort posts
     ) {
         this.mapper = mapper;
         this.jdbc = jdbc;
         this.redis = redis;
         this.eventBus = eventBus;
         this.props = props;
+        this.approval = approval;
+        this.posts = posts;
     }
 
     public record ClientRef(UUID clientId, UUID tenantId, String waUserId, String status) {}
@@ -216,28 +223,33 @@ public class WhatsAppIngestService {
     private Map<String, Object> handleInteractive(
             JsonNode message, String wamid, String from, String correlationId) {
         String buttonId = text(message.path("interactive").path("button_reply"), "id").orElse("");
-        String decision = buttonId.startsWith("approve_") ? "approved"
-                : buttonId.startsWith("disapprove_") ? "disapproved" : "unknown";
-        redis.opsForStream().add("approvals", Map.of(
-                "wamid", wamid,
-                "from", from,
-                "decision", decision,
-                "buttonId", buttonId,
-                "correlationId", correlationId
-        ));
-        if ("approved".equals(decision)) {
-            resolveClient(from).ifPresent(client -> {
-                MDC.put("tenantId", client.tenantId().toString());
-                eventBus.publish(new Approved(
-                        client.tenantId(),
-                        correlationId,
-                        wamid,
-                        buttonId.replaceFirst("^approve_post_", ""),
-                        Instant.now()
-                ));
-            });
+        String title = text(message.path("interactive").path("button_reply"), "title").orElse("");
+        String button;
+        UUID postId = null;
+        if (buttonId.startsWith("approve_post_")) {
+            button = "approve";
+            postId = parseUuid(buttonId.substring("approve_post_".length()));
+        } else if (buttonId.startsWith("disapprove_post_")) {
+            button = "disapprove";
+            postId = parseUuid(buttonId.substring("disapprove_post_".length()));
+        } else if (buttonId.startsWith("approve_") || "Approve".equalsIgnoreCase(title)) {
+            button = "approve";
+        } else if (buttonId.startsWith("disapprove_") || "Disapprove".equalsIgnoreCase(title)) {
+            button = "disapprove";
+        } else {
+            return Map.of("status", "ignored_interactive", "buttonId", buttonId, "wamid", wamid);
         }
-        return Map.of("status", "queued_approval", "decision", decision, "wamid", wamid);
+        if (postId == null) {
+            postId = posts.findLatestAwaitingApproval(from).orElse(null);
+        }
+        if (postId == null) {
+            return Map.of("status", "error", "error", "no_awaiting_approval_post", "wamid", wamid);
+        }
+        Map<String, Object> result = approval.handleButton(from, postId, button, null, wamid);
+        result.put("wamid", wamid);
+        result.put("buttonId", buttonId);
+        result.put("correlationId", correlationId);
+        return result;
     }
 
     private boolean tryInsertReceipt(String channel, String externalId, UUID tenantId, String correlationId) {
@@ -274,6 +286,14 @@ public class WhatsAppIngestService {
                 },
                 digits, "+" + digits, from
         ));
+    }
+
+    private static UUID parseUuid(String raw) {
+        try {
+            return UUID.fromString(raw);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Optional<String> text(JsonNode node, String field) {

@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: rozpost-worker-publish
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/rozpost}
+    username: ${SPRING_DATASOURCE_USERNAME:rozpost}
+    password: ${SPRING_DATASOURCE_PASSWORD:rozpost}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
@@ -17,3 +21,27 @@ rozpost:
   meta-mode: ${META_MODE:mock}
   app-env: ${APP_ENV:local}
   api-base-url: ${API_BASE_URL:http://localhost:8080}
+  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}
+  publish-poll-ms: ${PUBLISH_POLL_MS:1000}
+  ig-container-poll-ms: ${IG_CONTAINER_POLL_MS:1500}
+  ig-container-poll-max: ${IG_CONTAINER_POLL_MAX:40}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      metaGraph:
+        slidingWindowSize: 20
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      metaGraph:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.net.http.HttpTimeoutException
+          - com.rozpost.worker.publish.infrastructure.meta.GraphHttpClient$RateLimitedException

@@ -2,6 +2,8 @@ package com.rozpost.api.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rozpost.api.application.approval.ApprovalCommandService;
+import com.rozpost.api.application.port.PostRepositoryPort;
 import com.rozpost.api.domain.port.DomainEventBus;
 import com.rozpost.api.infrastructure.config.RozpostProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,8 @@ class WhatsAppIngestServiceTest {
     @Mock StringRedisTemplate redis;
     @Mock StreamOperations<String, Object, Object> streamOps;
     @Mock DomainEventBus eventBus;
+    @Mock ApprovalCommandService approval;
+    @Mock PostRepositoryPort posts;
 
     RozpostProperties props = new RozpostProperties();
     ObjectMapper mapper = new ObjectMapper();
@@ -46,7 +50,7 @@ class WhatsAppIngestServiceTest {
     @BeforeEach
     void setUp() {
         props.setMetaMode("mock");
-        service = new WhatsAppIngestService(mapper, jdbc, redis, eventBus, props);
+        service = new WhatsAppIngestService(mapper, jdbc, redis, eventBus, props, approval, posts);
     }
 
     @Test
