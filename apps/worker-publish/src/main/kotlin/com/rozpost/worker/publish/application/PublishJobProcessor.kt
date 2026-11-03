@@ -6,6 +6,7 @@ import com.rozpost.worker.publish.domain.PublishCommand
 import com.rozpost.worker.publish.domain.PublishTargetType
 import com.rozpost.worker.publish.infrastructure.meta.MetaTokenVault
 import com.rozpost.worker.publish.infrastructure.persistence.TenantPlanGate
+import com.rozpost.worker.publish.infrastructure.queue.StreamJobQueue
 import com.rozpost.worker.publish.infrastructure.strategy.PublishStrategyRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -20,7 +21,9 @@ class PublishJobProcessor(
     private val mapper: ObjectMapper,
     private val strategies: PublishStrategyRegistry,
     private val planGate: TenantPlanGate,
-    private val tokens: MetaTokenVault
+    private val tokens: MetaTokenVault,
+    private val quotaGovernor: QuotaGovernor,
+    private val streams: StreamJobQueue,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -72,12 +75,12 @@ class PublishJobProcessor(
 
             val strategy = strategies.get(command.target)
             val quota = strategy.quota(command)
-            if (quota.usage >= quota.total) {
+            val decision = quotaGovernor.decide(quota, command.correlationId)
+            if (!decision.allow) {
                 deferForQuota(command, json, quota.usage, quota.total)
                 return
             }
-            // Soft near-limit: schedule headroom notify when remaining <= 1
-            if (quota.total - quota.usage <= 1) {
+            if (decision.nearLimit) {
                 notifyNearQuota(command, quota.usage, quota.total)
             }
 
@@ -204,9 +207,9 @@ class PublishJobProcessor(
             command.postId,
             "Instagram daily publish limit reached ($used/$total). We scheduled your post for the next window."
         )
-        redis.opsForList().leftPush("ig-publish-delayed", json)
+        streams.enqueueDelayed(json)
         log.warn(
-            "Quota exhausted igUserId={} {}/{} postId={} — scheduled",
+            "Quota exhausted igUserId={} {}/{} postId={} — scheduled on stream.ig-publish-delayed",
             command.igUserId,
             used,
             total,

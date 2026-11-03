@@ -12,8 +12,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.rozpost.api.application.approval.ApprovalCommandService;
-import com.rozpost.api.application.port.JobEnqueuePort;
-import com.rozpost.api.application.port.PostRepositoryPort;
+import com.rozpost.api.domain.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.event.Approved;
 import com.rozpost.api.domain.event.DomainEvent;
 import com.rozpost.api.domain.port.DomainEventBus;

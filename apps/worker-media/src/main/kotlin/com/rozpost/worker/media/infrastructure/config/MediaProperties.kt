@@ -34,10 +34,10 @@ data class MediaProperties(
     data class S3(
         val endpoint: String = "http://localhost:9000",
         val region: String = "us-east-1",
-        val bucket: String = "imp-media",
+        val bucket: String = "rozpost-media",
         val accessKey: String = "minioadmin",
         val secretKey: String = "minioadmin",
-        val publicBaseUrl: String = "http://localhost:9000/imp-media",
+        val publicBaseUrl: String = "http://localhost:9000/rozpost-media",
         val pathStyle: Boolean = true,
     )
 

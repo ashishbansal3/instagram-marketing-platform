@@ -7,6 +7,7 @@ import com.rozpost.worker.media.domain.model.MediaDownloadJob
 import com.rozpost.worker.media.domain.model.PipelineResult
 import com.rozpost.worker.media.domain.model.ReelRenderJob
 import com.rozpost.worker.media.domain.strategy.CutStrategy
+import com.rozpost.worker.media.domain.port.WhatsAppMediaFetcher
 import com.rozpost.worker.media.infrastructure.caption.CaptionStrategyRegistry
 import com.rozpost.worker.media.infrastructure.config.MediaProperties
 import com.rozpost.worker.media.infrastructure.enhance.EnhanceStrategyRegistry
@@ -36,6 +37,7 @@ class MediaPipelineOrchestrator(
     private val queue: JobQueue,
     private val events: DomainEventPublisher,
     private val costLedger: CostLedgerService,
+    private val waMedia: WhatsAppMediaFetcher,
     restClientBuilder: RestClient.Builder,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -53,10 +55,19 @@ class MediaPipelineOrchestrator(
                     ?: error("empty download from ${job.sourceUrl}")
                 Files.write(local, body)
             }
-            else -> error("MediaDownloadJob requires sourceUrl or localPath")
+            !job.waMediaId.isNullOrBlank() -> {
+                val fetched = waMedia.fetchToFile(job.waMediaId, work.resolve("wa-fetch"), job.kind)
+                Files.copy(fetched, local, StandardCopyOption.REPLACE_EXISTING)
+            }
+            else -> error("MediaDownloadJob requires sourceUrl, localPath, or waMediaId")
         }
         val key = "${job.tenantId}/${job.postId}/original$ext"
         val url = storage.putFile(key, local, contentType(ext))
+        // Checkpoint: do not enqueue enhance until object storage has the original.
+        require(storage.exists(key)) {
+            "assets-ready checkpoint failed — original missing after upload key=$key"
+        }
+        log.info("download checkpoint ok key={} postId={} correlationId={}", key, job.postId, correlation())
         if (job.kind == "image" || ext in listOf(".jpg", ".jpeg", ".png", ".webp")) {
             queue.enqueueEnhance(
                 ImageEnhanceJob(
@@ -95,6 +106,9 @@ class MediaPipelineOrchestrator(
     }
 
     fun handleEnhance(job: ImageEnhanceJob): PipelineResult = withCorrelation(job.correlationId ?: job.jobId) {
+        require(storage.exists(job.assetKey)) {
+            "assets-ready checkpoint failed before enhance — missing key=${job.assetKey}"
+        }
         val work = workDir(job.tenantId, job.jobId)
         val input = work.resolve("enhance-input")
         storage.downloadTo(job.assetKey, input)

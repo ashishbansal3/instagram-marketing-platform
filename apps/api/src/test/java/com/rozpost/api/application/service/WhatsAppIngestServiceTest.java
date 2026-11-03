@@ -3,7 +3,7 @@ package com.rozpost.api.application.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rozpost.api.application.approval.ApprovalCommandService;
-import com.rozpost.api.application.port.PostRepositoryPort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.port.DomainEventBus;
 import com.rozpost.api.infrastructure.config.RozpostProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +69,27 @@ class WhatsAppIngestServiceTest {
 
         Map<String, Object> result = service.ingest(root);
         assertEquals("duplicate", result.get("status"));
+        verify(redis, never()).opsForStream();
+        verify(eventBus, never()).publish(any());
+    }
+
+    @Test
+    void duplicateMediaAssetIsIdempotentWithoutEnqueue() throws Exception {
+        JsonNode root = mapper.readTree("""
+                {"entry":[{"changes":[{"value":{"messages":[{
+                  "from":"919876543210","id":"wamid.ASSET","type":"image",
+                  "image":{"id":"m1","mime_type":"image/jpeg","caption":"x"}
+                }]}}]}]}
+                """);
+
+        when(jdbc.query(contains("FROM clients"), any(ResultSetExtractor.class), any(), any(), any()))
+                .thenReturn(new WhatsAppIngestService.ClientRef(clientId, tenantId, "919876543210", "active"));
+        when(jdbc.update(contains("webhook_receipts"), any(), any(), any(), any())).thenReturn(1);
+        when(jdbc.query(contains("media_assets"), any(ResultSetExtractor.class), eq("wamid.ASSET")))
+                .thenReturn(1);
+
+        Map<String, Object> result = service.ingest(root);
+        assertEquals("duplicate_asset", result.get("status"));
         verify(redis, never()).opsForStream();
         verify(eventBus, never()).publish(any());
     }

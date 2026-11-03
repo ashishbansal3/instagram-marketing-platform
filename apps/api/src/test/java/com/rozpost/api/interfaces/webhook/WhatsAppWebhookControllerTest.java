@@ -56,11 +56,24 @@ class WhatsAppWebhookControllerTest {
         mvc.perform(post("/api/v1/webhooks/whatsapp")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"entry\":[]}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("WA_SIGNATURE_INVALID")));
         mvc.perform(post("/webhooks/whatsapp")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"entry\":[]}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("WA_SIGNATURE_INVALID")));
+        verify(ingest, never()).ingest(any());
+    }
+
+    @Test
+    void liveModeRejectsInvalidHmacWithoutIngest() throws Exception {
+        mvc.perform(post("/api/v1/webhooks/whatsapp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Hub-Signature-256", "sha256=deadbeef")
+                        .content("{\"entry\":[]}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("WA_SIGNATURE_INVALID")));
         verify(ingest, never()).ingest(any());
     }
 

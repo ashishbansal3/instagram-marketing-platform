@@ -1,6 +1,6 @@
 package com.rozpost.api.infrastructure.persistence;
 
-import com.rozpost.api.application.port.PostRepositoryPort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.post.PostStatus;
 import java.util.LinkedHashMap;
 import java.util.Map;
