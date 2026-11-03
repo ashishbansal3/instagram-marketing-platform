@@ -63,7 +63,6 @@ async function forwardToSpring(form: FormData): Promise<Response> {
 
 export async function createOnboardingFromFormData(
   form: FormData,
-  _rawBody?: { contentType: string; body: ArrayBuffer },
 ): Promise<{ record: OnboardingRecord; source: "spring" | "local_fallback" }> {
   if (env.springApiUrl) {
     try {

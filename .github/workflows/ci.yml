@@ -133,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           docker compose up --build -d postgres redis minio
-          # Bucket init via mc (Quay). Non-fatal: API ObjectStorageService also creates the bucket.
+          # Bucket also created via MINIO_DEFAULT_BUCKETS / ObjectStorageService if mc init fails.
           docker compose up --build -d minio-init || echo "minio-init skipped/failed — relying on app bucket create"
           docker compose up --build -d api worker-media worker-publish remotion
       - name: Wait for API health

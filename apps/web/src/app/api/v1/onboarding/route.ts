@@ -20,10 +20,7 @@ export async function POST(req: NextRequest) {
     });
     const form = await formReq.formData();
 
-    const { record, source } = await createOnboardingFromFormData(form, {
-      contentType,
-      body,
-    });
+    const { record, source } = await createOnboardingFromFormData(form);
 
     return NextResponse.json(
       {
