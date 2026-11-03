@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.rozpost.worker.media.domain.event.DomainEvent
 import com.rozpost.worker.media.domain.event.DomainEventPublisher
 import org.slf4j.LoggerFactory
+import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 
@@ -14,11 +15,23 @@ class RedisDomainEventPublisher(
 ) : DomainEventPublisher {
     private val log = LoggerFactory.getLogger(javaClass)
     private val channel = "rozpost.domain.events"
+    /** Must match API LoggingDomainEventBus — Redis Stream, not a list (WRONGTYPE). */
+    private val streamKey = "domain-events"
 
     override fun publish(event: DomainEvent) {
         val json = mapper.writeValueAsString(event)
         redis.convertAndSend(channel, json)
-        redis.opsForList().leftPush("domain-events", json)
+        redis.opsForStream<String, String>().add(
+            MapRecord.create(
+                streamKey,
+                mapOf(
+                    "type" to event.type,
+                    "tenantId" to event.tenantId,
+                    "correlationId" to (event.correlationId ?: ""),
+                    "payload" to json,
+                ),
+            ),
+        )
         log.info(
             "domain_event type={} tenantId={} correlationId={} eventId={}",
             event.type,

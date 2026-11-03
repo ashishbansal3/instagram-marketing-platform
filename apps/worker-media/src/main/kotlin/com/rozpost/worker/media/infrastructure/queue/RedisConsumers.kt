@@ -50,34 +50,37 @@ class RedisConsumers(
     }
 
     private fun drain(stream: String, handler: (String) -> Unit) {
-        val messages = streams.readGroup(stream)
-        for (message in messages) {
-            val correlationId = extractCorrelation(message.payload) ?: UUID.randomUUID().toString()
-            MDC.put("correlationId", correlationId)
-            try {
-                if (message.deliveryCount > maxAttempts) {
-                    streams.toDlq(stream, message, "max attempts exceeded (${message.deliveryCount})")
-                    publishFailed(message.payload, stream, "max attempts exceeded")
-                    continue
+        // Serialize per-stream: pool scheduler + PEL reclaim otherwise double-processes one id.
+        synchronized(stream.intern()) {
+            val messages = streams.readGroup(stream)
+            for (message in messages) {
+                val correlationId = extractCorrelation(message.payload) ?: UUID.randomUUID().toString()
+                MDC.put("correlationId", correlationId)
+                try {
+                    if (message.deliveryCount > maxAttempts) {
+                        streams.toDlq(stream, message, "max attempts exceeded (${message.deliveryCount})")
+                        publishFailed(message.payload, stream, "max attempts exceeded")
+                        continue
+                    }
+                    enrichMdc(message.payload)
+                    handler(message.payload)
+                    streams.ack(stream, message.id)
+                } catch (e: Exception) {
+                    log.error(
+                        "Failed stream={} id={} deliveries={} correlationId={} err={}",
+                        stream, message.id, message.deliveryCount, correlationId, e.message, e,
+                    )
+                    if (message.deliveryCount >= maxAttempts) {
+                        streams.toDlq(stream, message, e.message ?: e.javaClass.simpleName)
+                        publishFailed(message.payload, stream, e.message ?: e.javaClass.simpleName)
+                    }
+                    // else: leave pending for PEL reclaim / redelivery (no ACK)
+                } finally {
+                    MDC.remove("correlationId")
+                    MDC.remove("tenantId")
+                    MDC.remove("jobId")
+                    MDC.remove("postId")
                 }
-                enrichMdc(message.payload)
-                handler(message.payload)
-                streams.ack(stream, message.id)
-            } catch (e: Exception) {
-                log.error(
-                    "Failed stream={} id={} deliveries={} correlationId={} err={}",
-                    stream, message.id, message.deliveryCount, correlationId, e.message, e,
-                )
-                if (message.deliveryCount >= maxAttempts) {
-                    streams.toDlq(stream, message, e.message ?: e.javaClass.simpleName)
-                    publishFailed(message.payload, stream, e.message ?: e.javaClass.simpleName)
-                }
-                // else: leave pending for PEL reclaim / redelivery (no ACK)
-            } finally {
-                MDC.remove("correlationId")
-                MDC.remove("tenantId")
-                MDC.remove("jobId")
-                MDC.remove("postId")
             }
         }
     }
