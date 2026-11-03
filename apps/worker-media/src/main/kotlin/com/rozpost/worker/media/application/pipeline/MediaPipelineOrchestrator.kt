@@ -189,20 +189,30 @@ class MediaPipelineOrchestrator(
             instructionText = job.instructionText,
             message = "Asset ready for Approve / Disapprove",
         )
-        events.publish(
-            MediaProcessed(
-                eventId = UUID.randomUUID().toString(),
-                correlationId = result.correlationId,
-                tenantId = result.tenantId,
-                postId = result.postId,
-                jobId = result.jobId,
-                status = result.status,
-                engine = result.engine,
-                previewUrls = result.previewUrls,
-                instructionText = result.instructionText,
-            ),
-        )
+        // Checkpoint the post first — domain-event fan-out must not block assets-ready.
         notify.assetReadyForApproval(result)
+        runCatching {
+            events.publish(
+                MediaProcessed(
+                    eventId = UUID.randomUUID().toString(),
+                    correlationId = result.correlationId,
+                    tenantId = result.tenantId,
+                    postId = result.postId,
+                    jobId = result.jobId,
+                    status = result.status,
+                    engine = result.engine,
+                    previewUrls = result.previewUrls,
+                    instructionText = result.instructionText,
+                ),
+            )
+        }.onFailure { e ->
+            log.warn(
+                "MediaProcessed event publish failed postId={} correlationId={} err={}",
+                result.postId,
+                result.correlationId,
+                e.message,
+            )
+        }
         result
     }
 
@@ -278,20 +288,29 @@ class MediaPipelineOrchestrator(
             instructionText = instructionText,
             message = "Asset ready for Approve / Disapprove",
         )
-        events.publish(
-            MediaProcessed(
-                eventId = UUID.randomUUID().toString(),
-                correlationId = result.correlationId,
-                tenantId = result.tenantId,
-                postId = result.postId,
-                jobId = result.jobId,
-                status = result.status,
-                engine = result.engine,
-                previewUrls = result.previewUrls,
-                instructionText = result.instructionText,
-            ),
-        )
         notify.assetReadyForApproval(result)
+        runCatching {
+            events.publish(
+                MediaProcessed(
+                    eventId = UUID.randomUUID().toString(),
+                    correlationId = result.correlationId,
+                    tenantId = result.tenantId,
+                    postId = result.postId,
+                    jobId = result.jobId,
+                    status = result.status,
+                    engine = result.engine,
+                    previewUrls = result.previewUrls,
+                    instructionText = result.instructionText,
+                ),
+            )
+        }.onFailure { e ->
+            log.warn(
+                "MediaProcessed event publish failed postId={} correlationId={} err={}",
+                result.postId,
+                result.correlationId,
+                e.message,
+            )
+        }
         log.info("processImageSync complete correlationId={} engine={}", result.correlationId, result.engine)
         result
     }

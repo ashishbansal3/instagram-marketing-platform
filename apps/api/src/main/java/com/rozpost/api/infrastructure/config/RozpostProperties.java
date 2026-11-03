@@ -10,6 +10,9 @@ public class RozpostProperties {
     private String metaAppSecret = "";
     private String tokenEncryptionKey = "";
     private String internalApiToken = "";
+    /** Local/mock still used when WA Cloud media download is stubbed (META_MODE=mock). */
+    private String mockMediaPath = "fixtures/sample-salon.jpg";
+    private String fixturePermalink = "https://www.instagram.com/p/MOCK_ROZPOST_POSTED/";
 
     public String getMetaMode() { return metaMode; }
     public void setMetaMode(String metaMode) { this.metaMode = metaMode; }
@@ -23,6 +26,10 @@ public class RozpostProperties {
     public void setTokenEncryptionKey(String tokenEncryptionKey) { this.tokenEncryptionKey = tokenEncryptionKey; }
     public String getInternalApiToken() { return internalApiToken; }
     public void setInternalApiToken(String internalApiToken) { this.internalApiToken = internalApiToken; }
+    public String getMockMediaPath() { return mockMediaPath; }
+    public void setMockMediaPath(String mockMediaPath) { this.mockMediaPath = mockMediaPath; }
+    public String getFixturePermalink() { return fixturePermalink; }
+    public void setFixturePermalink(String fixturePermalink) { this.fixturePermalink = fixturePermalink; }
 
     /** True unless META_MODE=live — gates mocks / simulate endpoints. */
     public boolean isMock() {

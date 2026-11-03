@@ -1,33 +1,32 @@
 package com.rozpost.api.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.rozpost.api.application.approval.ApprovalCommandService;
-import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.event.JobQueued;
 import com.rozpost.api.domain.event.MediaReceived;
 import com.rozpost.api.domain.port.DomainEventBus;
+import com.rozpost.api.domain.port.JobEnqueuePort;
+import com.rozpost.api.domain.port.PostRepositoryPort;
+import com.rozpost.api.domain.post.PostStatus;
 import com.rozpost.api.infrastructure.config.RozpostProperties;
 import com.rozpost.api.infrastructure.logging.CorrelationIdFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Durable WhatsApp ingest: resolve tenant from WA map (never trust client tenant_id),
- * idempotent receipt + media_assets + jobs, then Redis Stream enqueue + MediaReceived.
+ * idempotent receipt + media_assets + posts + jobs, then Redis list/stream enqueue via JobEnqueuePort.
  * Interactive approve/disapprove buttons route through ApprovalCommandService.
  */
 @Service
@@ -37,26 +36,23 @@ public class WhatsAppIngestService {
     public static final String FIXTURE_INBOUND =
             "packages/meta-mocks/fixtures/whatsapp/inbound-image-with-instruction.json";
 
-    private final ObjectMapper mapper;
     private final JdbcTemplate jdbc;
-    private final StringRedisTemplate redis;
+    private final JobEnqueuePort jobs;
     private final DomainEventBus eventBus;
     private final RozpostProperties props;
     private final ApprovalCommandService approval;
     private final PostRepositoryPort posts;
 
     public WhatsAppIngestService(
-            ObjectMapper mapper,
             JdbcTemplate jdbc,
-            StringRedisTemplate redis,
+            JobEnqueuePort jobs,
             DomainEventBus eventBus,
             RozpostProperties props,
             ApprovalCommandService approval,
             PostRepositoryPort posts
     ) {
-        this.mapper = mapper;
         this.jdbc = jdbc;
-        this.redis = redis;
+        this.jobs = jobs;
         this.eventBus = eventBus;
         this.props = props;
         this.approval = approval;
@@ -121,11 +117,16 @@ public class WhatsAppIngestService {
         String kind = "video".equals(type) ? "video" : "image";
 
         UUID mediaAssetId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        String r2Key = "tenant/" + client.tenantId() + "/inbound/" + mediaAssetId
+                + ("video".equals(kind) ? ".mp4" : ".jpg");
+
         jdbc.update(
                 """
                 INSERT INTO media_assets
-                  (id, tenant_id, client_id, source, kind, wa_media_id, wa_message_id, mime_type, instruction_text)
-                VALUES (?::uuid, ?::uuid, ?::uuid, ?, ?, ?, ?, ?, ?)
+                  (id, tenant_id, client_id, source, kind, wa_media_id, wa_message_id, mime_type,
+                   instruction_text, r2_key)
+                VALUES (?::uuid, ?::uuid, ?::uuid, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 mediaAssetId.toString(),
                 client.tenantId().toString(),
@@ -135,89 +136,93 @@ public class WhatsAppIngestService {
                 mediaId,
                 wamid,
                 mimeType,
-                instructionText
+                instructionText,
+                r2Key
         );
 
-        String idempotencyKey = "wamid:" + wamid;
-        UUID jobId = UUID.randomUUID();
-        int maxAttempts = 5;
-        ObjectNode payload = mapper.createObjectNode()
-                .put("mediaAssetId", mediaAssetId.toString())
-                .put("from", from)
-                .put("type", type)
-                .put("kind", kind)
-                .put("mediaId", mediaId)
-                .put("waMessageId", wamid)
-                .put("mimeType", mimeType)
-                .put("instruction_text", instructionText)
-                .put("instructionText", instructionText)
-                .put("correlationId", correlationId)
-                .put("clientId", client.clientId().toString())
-                .put("tenantId", client.tenantId().toString())
-                .put("source", source)
-                .put("metaMode", props.getMetaMode())
-                .put("maxAttempts", maxAttempts);
+        jdbc.update(
+                """
+                INSERT INTO posts (id, tenant_id, client_id, type, status, caption, instruction_text,
+                  source_asset_ids, retry_count, max_retries)
+                VALUES (?::uuid, ?::uuid, ?::uuid, ?, ?, ?, ?, ARRAY[?::uuid], 0, 3)
+                """,
+                postId.toString(),
+                client.tenantId().toString(),
+                client.clientId().toString(),
+                kind,
+                PostStatus.intake_received.name(),
+                instructionText,
+                instructionText,
+                mediaAssetId.toString()
+        );
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("mediaAssetId", mediaAssetId.toString());
+        payload.put("postId", postId.toString());
+        payload.put("from", from);
+        payload.put("type", type);
+        payload.put("kind", kind);
+        payload.put("mediaId", mediaId);
+        payload.put("waMediaId", mediaId);
+        payload.put("waMessageId", wamid);
+        payload.put("mimeType", mimeType);
+        payload.put("instruction_text", instructionText);
+        payload.put("instructionText", instructionText);
+        payload.put("correlationId", correlationId);
+        payload.put("clientId", client.clientId().toString());
+        payload.put("tenantId", client.tenantId().toString());
+        payload.put("source", source);
+        payload.put("metaMode", props.getMetaMode());
+        payload.put("r2Key", r2Key);
+        payload.put("locale", "hi-IN");
+        payload.put("maxAttempts", 5);
+        // Metadata only — never use webhook JSON as localPath (masks WA download stub).
         if (fixturePath != null) {
             payload.put("fixturePath", fixturePath);
-        } else if ("mock".equalsIgnoreCase(props.getMetaMode())) {
+        } else if (props.isMock()) {
             payload.put("fixturePath", FIXTURE_INBOUND);
         }
 
-        int inserted = jdbc.update(
-                """
-                INSERT INTO jobs (id, tenant_id, type, status, idempotency_key, payload, max_attempts)
-                VALUES (?::uuid, ?::uuid, 'media_download', 'queued', ?, ?::jsonb, ?)
-                ON CONFLICT (idempotency_key) DO NOTHING
-                """,
-                jobId.toString(),
-                client.tenantId().toString(),
+        String idempotencyKey = "wamid:" + wamid;
+        UUID jobId = jobs.enqueue(
+                client.tenantId(),
+                client.clientId(),
+                "media_download",
+                "media-download",
                 idempotencyKey,
-                payload.toString(),
-                maxAttempts
+                payload
         );
 
-        if (inserted > 0) {
-            Map<String, String> stream = new HashMap<>();
-            stream.put("jobId", jobId.toString());
-            stream.put("wamid", wamid);
-            stream.put("from", from);
-            stream.put("mediaId", mediaId == null ? "" : mediaId);
-            stream.put("mediaAssetId", mediaAssetId.toString());
-            stream.put("instruction_text", instructionText == null ? "" : instructionText);
-            stream.put("instructionText", instructionText == null ? "" : instructionText);
-            stream.put("tenant_id", client.tenantId().toString());
-            stream.put("client_id", client.clientId().toString());
-            stream.put("correlationId", correlationId);
-            stream.put("metaMode", props.getMetaMode());
-            stream.put("source", source);
-            stream.put("fixturePath", payload.path("fixturePath").asText(""));
-            stream.put("attempts", "0");
-            stream.put("maxAttempts", String.valueOf(maxAttempts));
-            stream.put("payload", payload.toString());
-            redis.opsForStream().add("media-download", stream);
-            eventBus.publish(new JobQueued(
-                    client.tenantId(),
-                    correlationId,
-                    jobId,
-                    "media_download",
-                    idempotencyKey,
-                    Instant.now()
-            ));
-        }
+        jdbc.update(
+                "UPDATE posts SET status = ?, updated_at = now() WHERE id = ?::uuid",
+                PostStatus.media_processing.name(),
+                postId.toString()
+        );
 
+        eventBus.publish(new JobQueued(
+                client.tenantId(),
+                correlationId,
+                jobId,
+                "media_download",
+                idempotencyKey,
+                Instant.now()
+        ));
         eventBus.publish(new MediaReceived(
                 client.tenantId(), correlationId, wamid, mediaId, instructionText, Instant.now()
         ));
 
-        log.info("wa_ingest wamid={} type={} instructionPresent={} correlationId={}",
-                wamid, type, instructionText != null, correlationId);
-        return Map.of(
-                "status", inserted > 0 ? "queued_media_download" : "duplicate_job",
-                "wamid", wamid,
-                "mediaAssetId", mediaAssetId.toString(),
-                "jobId", jobId.toString(),
-                "instruction_text", instructionText == null ? "" : instructionText
-        );
+        log.info("wa_ingest wamid={} type={} postId={} instructionPresent={} correlationId={}",
+                wamid, type, postId, instructionText != null, correlationId);
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status", "queued_media_download");
+        out.put("wamid", wamid);
+        out.put("mediaAssetId", mediaAssetId.toString());
+        out.put("postId", postId.toString());
+        out.put("jobId", jobId.toString());
+        out.put("instruction_text", instructionText == null ? "" : instructionText);
+        out.put("correlationId", correlationId);
+        return out;
     }
 
     private Map<String, Object> handleInteractive(

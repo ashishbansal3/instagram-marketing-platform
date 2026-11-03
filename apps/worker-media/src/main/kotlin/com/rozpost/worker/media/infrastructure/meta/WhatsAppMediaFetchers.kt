@@ -35,7 +35,10 @@ class MockWhatsAppMediaFetcher {
     fun fetch(waMediaId: String, destDir: Path, kind: String): Path {
         Files.createDirectories(destDir)
         val dest = destDir.resolve("wa-$waMediaId${if (kind == "video") ".mp4" else ".jpg"}")
-        val candidates = listOf(
+        val configured = System.getenv("MOCK_MEDIA_PATH")
+        val candidates = listOfNotNull(
+            configured?.takeIf { it.isNotBlank() }?.let { Path.of(it) },
+            Path.of("/app/fixtures/sample-salon.jpg"),
             Path.of("fixtures/sample-salon.jpg"),
             Path.of("../fixtures/sample-salon.jpg"),
             Path.of("../../fixtures/sample-salon.jpg"),

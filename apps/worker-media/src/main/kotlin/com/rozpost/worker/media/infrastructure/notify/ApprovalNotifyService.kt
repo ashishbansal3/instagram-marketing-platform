@@ -43,7 +43,13 @@ class ApprovalNotifyService(
             req.body(payload).retrieve().toBodilessEntity()
             log.info("Notified API assets-ready postId={} correlationId={}", result.postId, result.correlationId)
         } catch (e: Exception) {
-            log.warn("API notify unavailable correlationId={} err={}", result.correlationId, e.message)
+            log.error(
+                "assets-ready notify FAILED postId={} correlationId={} err={} — post may stay media_processing",
+                result.postId,
+                result.correlationId,
+                e.message,
+            )
+            throw e
         }
 
         // WA mock sink only when explicitly enabled (feature flag) — not a production default path.

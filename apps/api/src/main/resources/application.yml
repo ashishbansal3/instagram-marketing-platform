@@ -41,7 +41,8 @@ rozpost:
   meta-graph-version: ${META_GRAPH_VERSION:v21.0}
   fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}
   publish-quota-per-day: ${PUBLISH_QUOTA_PER_DAY:25}
-  mock-auto-enhance: ${MOCK_AUTO_ENHANCE:true}
+  # false = enqueue real media-download jobs (compose E2E). true = simulation short-circuit only.
+  mock-auto-enhance: ${MOCK_AUTO_ENHANCE:false}
   api-public-base-url: ${API_PUBLIC_BASE_URL:${API_BASE_URL:http://localhost:8080}}
   website:
     use-llm: ${WEBSITE_USE_LLM:false}

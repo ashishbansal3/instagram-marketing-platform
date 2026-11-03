@@ -3,11 +3,11 @@
   "to": "919876543210",
   "type": "text",
   "text": {
-    "body": "posted https://www.instagram.com/p/DEMO_ROZPOST_POSTED/"
+    "body": "posted https://www.instagram.com/p/MOCK_ROZPOST_POSTED/"
   },
   "rozpost": {
     "event": "ig_published",
     "fixture": true,
-    "permalink": "https://www.instagram.com/p/DEMO_ROZPOST_POSTED/"
+    "permalink": "https://www.instagram.com/p/MOCK_ROZPOST_POSTED/"
   }
 }

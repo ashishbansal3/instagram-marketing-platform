@@ -68,16 +68,27 @@ class ObjectStorageService(
 
     fun downloadTo(key: String, dest: Path): Path {
         Files.createDirectories(dest.parent)
-        if (storageReady) {
-            try {
-                s3.getObject(GetObjectRequest.builder().bucket(props.s3.bucket).key(key).build(), dest)
-                return dest
-            } catch (e: Exception) {
-                log.warn("S3 get failed for {}, trying local: {}", key, e.message)
+        val tmp = dest.resolveSibling("${dest.fileName}.partial-${ProcessHandle.current().pid()}-${Thread.currentThread().threadId()}")
+        try {
+            if (storageReady) {
+                try {
+                    s3.getObject(GetObjectRequest.builder().bucket(props.s3.bucket).key(key).build(), tmp)
+                    try {
+                        Files.move(tmp, dest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                    } catch (_: Exception) {
+                        Files.move(tmp, dest, StandardCopyOption.REPLACE_EXISTING)
+                    }
+                    return dest
+                } catch (e: Exception) {
+                    log.warn("S3 get failed for {}, trying local: {}", key, e.message)
+                    runCatching { Files.deleteIfExists(tmp) }
+                }
             }
+            Files.copy(localRoot().resolve(key), dest, StandardCopyOption.REPLACE_EXISTING)
+            return dest
+        } finally {
+            runCatching { Files.deleteIfExists(tmp) }
         }
-        Files.copy(localRoot().resolve(key), dest, StandardCopyOption.REPLACE_EXISTING)
-        return dest
     }
 
     /** Checkpoint: object must exist in S3 or local fallback before enhance/cut. */

@@ -42,6 +42,11 @@ media:
     secret-key: ${S3_SECRET_KEY:minioadmin}
     public-base-url: ${S3_PUBLIC_BASE_URL:http://localhost:9000/rozpost-media}
     path-style: ${S3_FORCE_PATH_STYLE:true}
+  whatsapp:
+    meta-mode: ${META_MODE:mock}
+    graph-version: ${META_GRAPH_VERSION:v21.0}
+    access-token: ${META_WA_ACCESS_TOKEN:}
+    mock-media-path: ${MOCK_MEDIA_PATH:/app/fixtures/sample-salon.jpg}
   enhance:
     allow-mock-fallback: ${MEDIA_ALLOW_MOCK_FALLBACK:true}
     photoroom-api-key: ${PHOTOROOM_API_KEY:}

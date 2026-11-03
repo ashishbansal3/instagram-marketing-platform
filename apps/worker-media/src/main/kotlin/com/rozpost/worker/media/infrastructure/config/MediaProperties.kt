@@ -8,6 +8,7 @@ data class MediaProperties(
     val queues: Queues = Queues(),
     val consumer: Consumer = Consumer(),
     val s3: S3 = S3(),
+    val whatsapp: WhatsApp = WhatsApp(),
     val enhance: Enhance = Enhance(),
     val remotion: Remotion = Remotion(),
     val notify: Notify = Notify(),
@@ -39,6 +40,14 @@ data class MediaProperties(
         val secretKey: String = "minioadmin",
         val publicBaseUrl: String = "http://localhost:9000/rozpost-media",
         val pathStyle: Boolean = true,
+    )
+
+    data class WhatsApp(
+        /** mock | live — live fetches Graph media URL; mock uses fixture/local stub. */
+        val metaMode: String = System.getenv("META_MODE") ?: "mock",
+        val graphVersion: String = System.getenv("META_GRAPH_VERSION") ?: "v21.0",
+        val accessToken: String = System.getenv("META_WA_ACCESS_TOKEN") ?: "",
+        val mockMediaPath: String = System.getenv("MOCK_MEDIA_PATH") ?: "/app/fixtures/sample-salon.jpg",
     )
 
     data class Enhance(

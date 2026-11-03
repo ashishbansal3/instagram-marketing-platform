@@ -22,10 +22,6 @@ export async function POST(req: NextRequest) {
 
     const { record, source } = await createOnboardingFromFormData(
       form,
-      {
-        contentType,
-        body,
-      },
       correlationId,
     );
 

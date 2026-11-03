@@ -60,7 +60,6 @@ async function forwardJsonToSpring(
 
 export async function createOnboardingFromFormData(
   form: FormData,
-  _rawBody?: { contentType: string; body: ArrayBuffer },
   correlationId?: string,
 ): Promise<{ record: OnboardingRecord; source: "spring" | "local_fallback" }> {
   const photo = form.get("photo");
