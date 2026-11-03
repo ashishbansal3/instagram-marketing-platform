@@ -9,6 +9,7 @@ import {
   saveOnboarding,
 } from "@/infrastructure/onboarding-store";
 import { env } from "@/config/env";
+import { CORRELATION_HEADER } from "@/lib/correlation";
 
 function validate(input: CreateOnboardingInput): void {
   const missing = (
@@ -24,42 +25,96 @@ function validate(input: CreateOnboardingInput): void {
   }
 }
 
-async function forwardToSpring(
-  contentType: string,
-  body: ArrayBuffer,
+function formToSpringJson(form: FormData): Record<string, unknown> {
+  const phone = String(form.get("phone") ?? "").trim();
+  return {
+    phoneE164: phone,
+    phone,
+    businessName: String(form.get("businessName") ?? "").trim(),
+    category: String(form.get("category") ?? "").trim(),
+    city: String(form.get("city") ?? "").trim(),
+    bio: String(form.get("bio") ?? "").trim(),
+    services: String(form.get("services") ?? "").trim() || null,
+    address: String(form.get("address") ?? "").trim() || null,
+    hours: String(form.get("hours") ?? "").trim() || null,
+    locale: "en-IN",
+  };
+}
+
+async function forwardJsonToSpring(
+  payload: Record<string, unknown>,
+  correlationId?: string,
 ): Promise<Response> {
-  const upstream = await fetch(`${env.springApiUrl}/api/v1/onboarding`, {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (correlationId) {
+    headers[CORRELATION_HEADER] = correlationId;
+  }
+  return fetch(`${env.springApiUrl}/api/v1/onboarding`, {
     method: "POST",
-    headers: contentType ? { "content-type": contentType } : undefined,
-    body,
+    headers,
+    body: JSON.stringify(payload),
   });
-  return upstream;
 }
 
 export async function createOnboardingFromFormData(
   form: FormData,
-  rawBody?: { contentType: string; body: ArrayBuffer },
+  _rawBody?: { contentType: string; body: ArrayBuffer },
+  correlationId?: string,
 ): Promise<{ record: OnboardingRecord; source: "spring" | "local_fallback" }> {
-  if (env.springApiUrl && rawBody) {
+  const photo = form.get("photo");
+  const photoName =
+    photo && typeof photo === "object" && "name" in photo && "size" in photo && photo.size > 0
+      ? String(photo.name)
+      : null;
+
+  if (env.springApiUrl) {
     try {
-      const upstream = await forwardToSpring(rawBody.contentType, rawBody.body);
+      const payload = formToSpringJson(form);
+      const upstream = await forwardJsonToSpring(payload, correlationId);
       if (upstream.ok) {
-        const data = (await upstream.json()) as { id: string } & Partial<OnboardingRecord>;
+        const data = (await upstream.json()) as {
+          id?: string;
+          clientId?: string;
+          phoneE164?: string;
+          phone?: string;
+          businessName?: string;
+          category?: string;
+          city?: string;
+          bio?: string;
+          status?: string;
+          onboardingStatus?: string;
+          websitePreviewUrl?: string | null;
+          websiteStatus?: string | null;
+          setupJobId?: string;
+        };
+        const id = data.id ?? data.clientId;
+        if (!id) {
+          throw new AppError("UPSTREAM_ERROR", "Onboarding API missing id", 502);
+        }
         const record: OnboardingRecord = {
-          id: data.id,
-          phone: String(data.phone ?? form.get("phone") ?? ""),
+          id,
+          phone: String(data.phone ?? data.phoneE164 ?? form.get("phone") ?? ""),
           businessName: String(data.businessName ?? form.get("businessName") ?? ""),
           category: String(data.category ?? form.get("category") ?? ""),
           city: String(data.city ?? form.get("city") ?? ""),
           bio: String(data.bio ?? form.get("bio") ?? ""),
-          photoName: data.photoName ?? null,
-          status: (data.status as OnboardingRecord["status"]) ?? "profile_collected",
-          createdAt: data.createdAt ?? new Date().toISOString(),
+          photoName,
+          status:
+            (data.status as OnboardingRecord["status"]) ??
+            (data.onboardingStatus as OnboardingRecord["status"]) ??
+            "profile_collected",
+          createdAt: new Date().toISOString(),
+          websitePreviewUrl: data.websitePreviewUrl ?? null,
+          websiteStatus: data.websiteStatus ?? "pending",
+          setupJobId: data.setupJobId,
         };
+        saveOnboarding(record);
         return { record, source: "spring" };
       }
-    } catch {
-      // Graceful degradation to local fallback when API unreachable in non-live setups.
+    } catch (err) {
+      if (err instanceof AppError) throw err;
       if (env.metaMode === "live") {
         throw new AppError(
           "UPSTREAM_UNAVAILABLE",
@@ -69,12 +124,6 @@ export async function createOnboardingFromFormData(
       }
     }
   }
-
-  const photo = form.get("photo");
-  const photoName =
-    photo && typeof photo === "object" && "name" in photo && "size" in photo && photo.size > 0
-      ? String(photo.name)
-      : null;
 
   const input: CreateOnboardingInput = {
     phone: String(form.get("phone") ?? "").trim(),
@@ -91,6 +140,8 @@ export async function createOnboardingFromFormData(
     ...input,
     status: "profile_collected",
     createdAt: new Date().toISOString(),
+    websitePreviewUrl: null,
+    websiteStatus: "pending_local",
   });
   return { record, source: "local_fallback" };
 }

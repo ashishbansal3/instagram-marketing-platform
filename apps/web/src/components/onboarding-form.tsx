@@ -113,6 +113,43 @@ export function OnboardingForm() {
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">
+          Services{" "}
+          <span className="text-[var(--ink-muted)]">(comma-separated, optional)</span>
+        </span>
+        <input
+          className="field"
+          name="services"
+          placeholder="e.g. Haircut, Facial, Bridal makeup"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">
+          Address{" "}
+          <span className="text-[var(--ink-muted)]">(optional)</span>
+        </span>
+        <input
+          className="field"
+          name="address"
+          placeholder="Street, landmark, locality"
+          autoComplete="street-address"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">
+          Hours{" "}
+          <span className="text-[var(--ink-muted)]">(optional)</span>
+        </span>
+        <input
+          className="field"
+          name="hours"
+          placeholder="Mon–Sat 10:00–19:00"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">
           Optional photo{" "}
           <span className="text-[var(--ink-muted)]">(logo or storefront)</span>
         </span>

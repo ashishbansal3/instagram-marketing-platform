@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OAuthConnect } from "@/components/oauth-connect";
+import { WebsiteSetupStatus } from "@/components/website-setup-status";
 import { JsonLd } from "@/components/json-ld";
 import { buildMetadata, howToConnectJsonLd } from "@/lib/seo";
 
@@ -58,6 +59,8 @@ export default async function ConnectPage({
           .
         </p>
       </section>
+
+      <WebsiteSetupStatus onboardingId={onboardingId} />
 
       <section className="mt-10">
         <h2 className="text-xl font-semibold">Connect with Instagram Login</h2>

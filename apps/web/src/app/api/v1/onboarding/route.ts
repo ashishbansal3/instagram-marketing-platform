@@ -20,16 +20,23 @@ export async function POST(req: NextRequest) {
     });
     const form = await formReq.formData();
 
-    const { record, source } = await createOnboardingFromFormData(form, {
-      contentType,
-      body,
-    });
+    const { record, source } = await createOnboardingFromFormData(
+      form,
+      {
+        contentType,
+        body,
+      },
+      correlationId,
+    );
 
     return NextResponse.json(
       {
         id: record.id,
         status: record.status,
         source,
+        websitePreviewUrl: record.websitePreviewUrl ?? null,
+        websiteStatus: record.websiteStatus ?? null,
+        setupJobId: record.setupJobId,
       },
       {
         status: 201,
