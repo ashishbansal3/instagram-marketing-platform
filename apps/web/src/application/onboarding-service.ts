@@ -91,7 +91,7 @@ export async function createOnboardingFromFormData(
         };
         const id = data.id ?? data.clientId;
         if (!id) {
-          throw new AppError("UPSTREAM_ERROR", "Onboarding API missing id", 502);
+          throw new AppError("UPSTREAM_UNAVAILABLE", "Onboarding API missing id", 502);
         }
         const record: OnboardingRecord = {
           id,
