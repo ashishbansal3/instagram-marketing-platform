@@ -13,6 +13,9 @@ export type OnboardingRecord = {
   photoName: string | null;
   status: OnboardingStatus;
   createdAt: string;
+  websitePreviewUrl?: string | null;
+  websiteStatus?: string | null;
+  setupJobId?: string;
 };
 
 export type CreateOnboardingInput = {

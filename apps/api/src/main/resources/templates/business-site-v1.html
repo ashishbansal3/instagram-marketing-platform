@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{BUSINESS_NAME}} · {{CITY}}</title>
+  <meta name="description" content="{{BIO_META}}" />
+  <style>
+    :root {
+      --ink: #1a1f1c;
+      --muted: #5a635c;
+      --paper: #f7f3ec;
+      --paper-deep: #ebe4d6;
+      --brand: #0f6b4c;
+      --brand-deep: #0a4734;
+      --accent: #c45c26;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", "Helvetica Neue", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #d8efe4 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #f3e0d2 0%, transparent 50%),
+        linear-gradient(180deg, var(--paper) 0%, #fff 48%, var(--paper-deep) 100%);
+      min-height: 100vh;
+    }
+    .shell { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .brand {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 750;
+      letter-spacing: -0.03em;
+      color: var(--brand-deep);
+      line-height: 1.1;
+      margin: 0;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+    }
+    .lede {
+      margin: 1rem 0 0;
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 38rem;
+      line-height: 1.55;
+    }
+    .cta {
+      display: inline-block;
+      margin-top: 1.5rem;
+      background: var(--brand);
+      color: #fff;
+      text-decoration: none;
+      padding: 0.85rem 1.25rem;
+      border-radius: 0.5rem;
+      font-weight: 650;
+    }
+    section { margin-top: 3rem; }
+    h2 {
+      font-size: 1.35rem;
+      margin: 0 0 0.75rem;
+      color: var(--brand-deep);
+    }
+    .services {
+      display: grid;
+      gap: 0.65rem;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+    .services li {
+      padding: 0.85rem 1rem;
+      background: rgba(255,255,255,0.72);
+      border-left: 3px solid var(--brand);
+    }
+    .meta-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    .meta-grid p { margin: 0.25rem 0 0; color: var(--muted); }
+    .meta-grid strong { color: var(--ink); }
+    footer {
+      margin-top: 3.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(15,107,76,0.18);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <p class="eyebrow">{{CATEGORY}} · {{CITY}}</p>
+    <h1 class="brand">{{BUSINESS_NAME}}</h1>
+    <p class="lede">{{BIO}}</p>
+    <a class="cta" href="tel:{{PHONE_TEL}}">Call {{PHONE_DISPLAY}}</a>
+
+    <section>
+      <h2>Services</h2>
+      <ul class="services">{{SERVICES_LIST}}</ul>
+    </section>
+
+    <section>
+      <h2>Visit us</h2>
+      <div class="meta-grid">
+        <div>
+          <strong>Location</strong>
+          <p>{{ADDRESS_LINE}}</p>
+        </div>
+        <div>
+          <strong>Hours</strong>
+          <p>{{HOURS_LINE}}</p>
+        </div>
+        <div>
+          <strong>Phone</strong>
+          <p>{{PHONE_DISPLAY}}</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Site generated for {{BUSINESS_NAME}} · powered by RozPost
+    </footer>
+  </main>
+</body>
+</html>
