@@ -31,6 +31,8 @@ publish:
     enabled: true
     poll-ms: ${PUBLISH_POLL_MS:1000}
     max-attempts: ${PUBLISH_MAX_ATTEMPTS:5}
+    pel-min-idle-ms: ${PUBLISH_PEL_MIN_IDLE_MS:30000}
+    pel-claim-count: ${PUBLISH_PEL_CLAIM_COUNT:10}
   queues:
     publish: stream.ig-publish
     delayed: stream.ig-publish-delayed

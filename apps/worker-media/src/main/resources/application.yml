@@ -34,6 +34,8 @@ media:
     enabled: ${MEDIA_CONSUMER_ENABLED:true}
     poll-ms: ${MEDIA_POLL_MS:1000}
     max-attempts: ${MEDIA_MAX_ATTEMPTS:5}
+    pel-min-idle-ms: ${MEDIA_PEL_MIN_IDLE_MS:30000}
+    pel-claim-count: ${MEDIA_PEL_CLAIM_COUNT:10}
   s3:
     endpoint: ${S3_ENDPOINT:http://localhost:9000}
     region: ${S3_REGION:us-east-1}
