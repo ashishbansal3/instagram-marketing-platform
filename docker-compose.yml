@@ -1,3 +1,7 @@
+# RozPost local stack. Secrets are not required in the repo.
+# Optional overrides: cp .env.example .env  (Compose loads .env for ${VAR} substitution only;
+# services do not mount a mandatory env_file, so `docker compose up` works without .env.)
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -62,15 +66,21 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    env_file: .env
     environment:
       META_MODE: ${META_MODE:-mock}
       APP_ENV: ${APP_ENV:-local}
+      WEBHOOK_VERIFY_TOKEN: ${WEBHOOK_VERIFY_TOKEN:-local-verify}
+      MOCK_MEDIA_PATH: /app/fixtures/sample-salon.jpg
+      MOCK_AUTO_ENHANCE: ${MOCK_AUTO_ENHANCE:-false}
+      FIXTURE_PERMALINK: ${FIXTURE_PERMALINK:-https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rozpost}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rozpost}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
+      REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
@@ -80,72 +90,108 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
 
   worker-media:
     build:
       context: .
       dockerfile: apps/worker-media/Dockerfile
-    env_file: .env
     environment:
       META_MODE: ${META_MODE:-mock}
       APP_ENV: ${APP_ENV:-local}
+      MOCK_MEDIA_PATH: /app/fixtures/sample-salon.jpg
+      MEDIA_ALLOW_MOCK_FALLBACK: "true"
+      WA_MOCK_ENABLED: "true"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rozpost}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rozpost}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
+      REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
+      S3_PUBLIC_BASE_URL: http://minio:9000/${S3_BUCKET:-rozpost-media}
+      S3_FORCE_PATH_STYLE: "true"
       REMOTION_SERVICE_URL: http://remotion:3100
+      REMOTION_BASE_URL: http://remotion:3100
+      NOTIFY_API_BASE_URL: http://api:8080
       API_BASE_URL: http://api:8080
     depends_on:
-      - api
-      - remotion
-      - redis
+      api:
+        condition: service_healthy
+      remotion:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   worker-publish:
     build:
       context: .
       dockerfile: apps/worker-publish/Dockerfile
-    env_file: .env
     environment:
       META_MODE: ${META_MODE:-mock}
       APP_ENV: ${APP_ENV:-local}
+      FIXTURE_PERMALINK: ${FIXTURE_PERMALINK:-https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rozpost}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rozpost}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rozpost}
       SPRING_DATA_REDIS_HOST: redis
+      REDIS_HOST: redis
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
       API_BASE_URL: http://api:8080
     depends_on:
-      - api
-      - redis
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   remotion:
     build:
       context: .
       dockerfile: apps/remotion-service/Dockerfile
-    env_file: .env
     environment:
       PORT: 3100
       APP_ENV: ${APP_ENV:-local}
       S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-rozpost-media}
     ports:
       - "${REMOTION_PORT:-3100}:3100"
     depends_on:
       minio-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    env_file: .env
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        NEXT_PUBLIC_META_MODE: ${META_MODE:-mock}
     environment:
+      # Server-side BFF → Spring (Docker network). Required for onboarding to create tenants/clients.
+      SPRING_API_URL: http://api:8080
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_META_MODE: ${META_MODE:-mock}
+      META_MODE: ${META_MODE:-mock}
       APP_ENV: ${APP_ENV:-local}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:

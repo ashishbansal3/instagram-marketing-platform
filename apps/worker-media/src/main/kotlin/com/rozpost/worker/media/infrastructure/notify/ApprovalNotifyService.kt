@@ -32,16 +32,24 @@ class ApprovalNotifyService(
         )
 
         try {
-            http.post()
+            var spec = http.post()
                 .uri("${props.notify.apiBaseUrl.trimEnd('/')}/api/v1/internal/posts/${result.postId}/assets-ready")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-Correlation-Id", result.correlationId ?: "")
-                .body(payload)
-                .retrieve()
-                .toBodilessEntity()
+            val token = System.getenv("INTERNAL_API_TOKEN")
+            if (!token.isNullOrBlank()) {
+                spec = spec.header("X-Internal-Token", token)
+            }
+            spec.body(payload).retrieve().toBodilessEntity()
             log.info("Notified API assets-ready postId={} correlationId={}", result.postId, result.correlationId)
         } catch (e: Exception) {
-            log.warn("API notify unavailable correlationId={} err={}", result.correlationId, e.message)
+            log.error(
+                "assets-ready notify FAILED postId={} correlationId={} err={} — post may stay media_processing",
+                result.postId,
+                result.correlationId,
+                e.message,
+            )
+            throw e
         }
 
         // WA mock sink only when explicitly enabled (feature flag) — not a production default path.

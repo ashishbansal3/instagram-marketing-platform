@@ -8,6 +8,9 @@ RUN apk add --no-cache bash curl unzip \
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+RUN apk add --no-cache curl
 COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+COPY fixtures/sample-salon.jpg /app/fixtures/sample-salon.jpg
+ENV MOCK_MEDIA_PATH=/app/fixtures/sample-salon.jpg
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app/app.jar"]

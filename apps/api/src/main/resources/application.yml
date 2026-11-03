@@ -32,10 +32,13 @@ logging:
 rozpost:
   meta-mode: ${META_MODE:mock}
   app-env: ${APP_ENV:local}
-  webhook-verify-token: ${WEBHOOK_VERIFY_TOKEN:}
+  webhook-verify-token: ${WEBHOOK_VERIFY_TOKEN:local-verify}
   meta-app-secret: ${META_APP_SECRET:}
   token-encryption-key: ${TOKEN_ENCRYPTION_KEY:}
   internal-api-token: ${INTERNAL_API_TOKEN:}
-  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}
+  fixture-permalink: ${FIXTURE_PERMALINK:https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}
+  mock-media-path: ${MOCK_MEDIA_PATH:fixtures/sample-salon.jpg}
   publish-quota-per-day: ${PUBLISH_QUOTA_PER_DAY:25}
-  mock-auto-enhance: ${MOCK_AUTO_ENHANCE:true}
+  # false = enqueue real media-download/enhance jobs (compose E2E / workers).
+  # true = simulation-only short-circuit to awaiting_approval (unit tests / fast stubs).
+  mock-auto-enhance: ${MOCK_AUTO_ENHANCE:false}

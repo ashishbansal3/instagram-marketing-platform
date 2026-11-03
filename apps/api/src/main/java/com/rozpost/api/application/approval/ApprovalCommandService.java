@@ -37,7 +37,7 @@ public class ApprovalCommandService {
       JobEnqueuePort jobs,
       DomainEventBus events,
       @Value("${rozpost.meta-mode:mock}") String metaMode,
-      @Value("${rozpost.fixture-permalink:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}")
+      @Value("${rozpost.fixture-permalink:https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}")
           String fixturePermalink,
       @Value("${rozpost.publish-quota-per-day:25}") int quotaPerDay,
       @Value("${rozpost.mock-auto-enhance:true}") boolean mockAutoEnhance) {

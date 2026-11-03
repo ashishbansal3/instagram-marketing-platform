@@ -96,7 +96,9 @@ public class WaSimulationService {
     dlPayload.put("instructionText", instruction);
     dlPayload.put("postId", postId.toString());
     dlPayload.put("metaMode", metaMode);
+    dlPayload.put("kind", "image");
     dlPayload.put("correlationId", correlationId);
+    // Do not set localPath here — worker resolves WA media via WhatsAppMediaDownloader (mock stub / live Graph).
 
     UUID dlJob =
         jobs.enqueue(
@@ -110,18 +112,20 @@ public class WaSimulationService {
         PostStatus.media_processing.name(),
         postId.toString());
 
-    Map<String, Object> enhancePayload = new LinkedHashMap<>();
-    enhancePayload.put("mediaAssetId", assetId.toString());
-    enhancePayload.put("r2Key", "tenant/" + tenantId + "/inbound/" + assetId + ".jpg");
-    enhancePayload.put("instructionText", instruction);
-    enhancePayload.put("postId", postId.toString());
-    enhancePayload.put("correlationId", correlationId);
-    UUID enhanceJob =
-        jobs.enqueue(
-            tenantId, clientId, "image_enhance", "image-enhance", "enhance:" + postId, enhancePayload);
-
+    // Default: real worker path (download → enhance → Remotion → assets-ready).
+    // mockAutoEnhance=true is an explicit fast stub for unit tests only — never the compose smoke default.
     String status = PostStatus.media_processing.name();
+    UUID enhanceJob = null;
     if ("mock".equalsIgnoreCase(metaMode) && mockAutoEnhance) {
+      Map<String, Object> enhancePayload = new LinkedHashMap<>();
+      enhancePayload.put("mediaAssetId", assetId.toString());
+      enhancePayload.put("r2Key", "tenant/" + tenantId + "/inbound/" + assetId + ".jpg");
+      enhancePayload.put("instructionText", instruction);
+      enhancePayload.put("postId", postId.toString());
+      enhancePayload.put("correlationId", correlationId);
+      enhanceJob =
+          jobs.enqueue(
+              tenantId, clientId, "image_enhance", "image-enhance", "enhance:" + postId, enhancePayload);
       UUID outputId = UUID.randomUUID();
       jdbc.update(
           """
@@ -155,7 +159,10 @@ public class WaSimulationService {
     out.put("mediaAssetId", assetId.toString());
     out.put("status", status);
     out.put("downloadJobId", dlJob.toString());
-    out.put("enhanceJobId", enhanceJob.toString());
+    if (enhanceJob != null) {
+      out.put("enhanceJobId", enhanceJob.toString());
+    }
+    out.put("mockAutoEnhance", mockAutoEnhance && "mock".equalsIgnoreCase(metaMode));
     out.put("instructionText", instruction);
     out.put("correlationId", correlationId);
     return out;

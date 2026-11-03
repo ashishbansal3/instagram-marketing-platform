@@ -11,6 +11,7 @@ import com.rozpost.worker.media.infrastructure.caption.CaptionStrategyRegistry
 import com.rozpost.worker.media.infrastructure.config.MediaProperties
 import com.rozpost.worker.media.infrastructure.enhance.EnhanceStrategyRegistry
 import com.rozpost.worker.media.infrastructure.ledger.CostLedgerService
+import com.rozpost.worker.media.infrastructure.meta.WhatsAppMediaDownloader
 import com.rozpost.worker.media.infrastructure.notify.ApprovalNotifyService
 import com.rozpost.worker.media.infrastructure.queue.JobQueue
 import com.rozpost.worker.media.infrastructure.storage.ObjectStorageService
@@ -18,12 +19,15 @@ import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
+import java.awt.Color
+import java.awt.image.BufferedImage
 import java.math.BigDecimal
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.util.UUID
+import javax.imageio.ImageIO
 
 @Service
 class MediaPipelineOrchestrator(
@@ -36,6 +40,7 @@ class MediaPipelineOrchestrator(
     private val queue: JobQueue,
     private val events: DomainEventPublisher,
     private val costLedger: CostLedgerService,
+    private val waMedia: WhatsAppMediaDownloader,
     restClientBuilder: RestClient.Builder,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -46,14 +51,26 @@ class MediaPipelineOrchestrator(
         val ext = guessExt(job.sourceUrl ?: job.localPath, job.kind)
         val local = work.resolve("original$ext")
         when {
-            !job.localPath.isNullOrBlank() ->
+            !job.localPath.isNullOrBlank() && Files.isRegularFile(Path.of(job.localPath)) ->
                 Files.copy(Path.of(job.localPath), local, StandardCopyOption.REPLACE_EXISTING)
             !job.sourceUrl.isNullOrBlank() -> {
                 val body = http.get().uri(URI.create(job.sourceUrl)).retrieve().toEntity(ByteArray::class.java).body
                     ?: error("empty download from ${job.sourceUrl}")
                 Files.write(local, body)
             }
-            else -> error("MediaDownloadJob requires sourceUrl or localPath")
+            !job.waMediaId.isNullOrBlank() -> {
+                // Official path: resolve WA Cloud media (Graph live, fixture stub when META_MODE=mock).
+                waMedia.downloadTo(job.waMediaId, local, job.kind)
+                log.info(
+                    "wa_media_downloaded jobId={} postId={} waMediaId={} metaMode={}",
+                    job.jobId, job.postId, job.waMediaId, props.whatsapp.metaMode,
+                )
+            }
+            props.enhance.allowMockFallback && !props.whatsapp.metaMode.equals("live", ignoreCase = true) -> {
+                writeMinimalJpeg(local)
+                log.warn("mock download without waMediaId jobId={} postId={}", job.jobId, job.postId)
+            }
+            else -> error("MediaDownloadJob requires sourceUrl, localPath, or waMediaId")
         }
         val key = "${job.tenantId}/${job.postId}/original$ext"
         val url = storage.putFile(key, local, contentType(ext))
@@ -315,6 +332,18 @@ class MediaPipelineOrchestrator(
         ".mp4" -> "video/mp4"
         ".mov" -> "video/quicktime"
         else -> "image/jpeg"
+    }
+
+    private fun writeMinimalJpeg(dest: Path) {
+        val img = BufferedImage(640, 960, BufferedImage.TYPE_INT_RGB)
+        val g = img.createGraphics()
+        g.color = Color(245, 236, 220)
+        g.fillRect(0, 0, img.width, img.height)
+        g.color = Color(40, 40, 40)
+        g.drawString("RozPost mock still", 40, 80)
+        g.dispose()
+        Files.createDirectories(dest.parent)
+        ImageIO.write(img, "jpg", dest.toFile())
     }
 
     private fun correlation(): String? = MDC.get("correlationId")

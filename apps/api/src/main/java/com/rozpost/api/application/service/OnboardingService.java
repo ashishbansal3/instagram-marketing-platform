@@ -70,6 +70,18 @@ public class OnboardingService {
             throw new IllegalStateException("Client already onboarded for phone");
         }
 
+        // Mock-friendly IG connection row so publish quota/token lookups succeed locally.
+        jdbc.update(
+                """
+                INSERT INTO meta_connections (tenant_id, provider, ig_user_id, access_token_enc, status)
+                VALUES (?::uuid, 'instagram_login', ?, convert_to(?, 'UTF8'), 'active')
+                ON CONFLICT (tenant_id, provider) DO NOTHING
+                """,
+                tenantId.toString(),
+                "mock-ig-" + waUserId,
+                "mock-token-" + waUserId
+        );
+
         return Map.of(
                 "tenantId", tenantId.toString(),
                 "clientId", clientId.toString(),

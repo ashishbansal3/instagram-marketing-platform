@@ -25,7 +25,7 @@ class InstagramPublishStrategy(
     private val graph: GraphHttpClient,
     private val mapper: ObjectMapper,
     @Value("\${rozpost.meta-mode:mock}") private val defaultMode: String,
-    @Value("\${rozpost.fixture-permalink:https://www.instagram.com/p/DEMO_ROZPOST_POSTED/}")
+    @Value("\${rozpost.fixture-permalink:https://www.instagram.com/p/MOCK_ROZPOST_POSTED/}")
     private val defaultPermalink: String,
     @Value("\${META_GRAPH_VERSION:v21.0}") private val graphVersion: String,
     @Value("\${rozpost.ig-container-poll-ms:1500}") private val pollMs: Long,
