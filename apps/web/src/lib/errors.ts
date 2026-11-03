@@ -2,6 +2,8 @@ export type ErrorCode =
   | "VALIDATION_ERROR"
   | "NOT_FOUND"
   | "UPSTREAM_UNAVAILABLE"
+  | "UPSTREAM_INVALID"
+  | "UPSTREAM_ERROR"
   | "UNAUTHORIZED"
   | "INTERNAL";
 

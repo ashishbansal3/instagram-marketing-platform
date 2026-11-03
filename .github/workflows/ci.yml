@@ -131,7 +131,11 @@ jobs:
           grep -q 'POSTGRES_DB=rozpost' .env
       - name: Compose up (pipeline services; skip web UI for API smoke)
         run: |
-          docker compose up --build -d postgres redis minio minio-init api worker-media worker-publish remotion
+          set -euo pipefail
+          docker compose up --build -d postgres redis minio
+          # Bucket init via mc (Quay). Non-fatal: API ObjectStorageService also creates the bucket.
+          docker compose up --build -d minio-init || echo "minio-init skipped/failed — relying on app bucket create"
+          docker compose up --build -d api worker-media worker-publish remotion
       - name: Wait for API health
         run: |
           for i in $(seq 1 90); do

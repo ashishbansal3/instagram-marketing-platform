@@ -30,7 +30,8 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    # Prefer Quay for CI reliability (Docker Hub rate limits / pull denials).
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
@@ -46,8 +47,10 @@ services:
       timeout: 5s
       retries: 10
 
+  # Use Quay (Docker Hub anonymous pulls of minio/mc are flaky in GHA).
+  # Apps also auto-create the bucket on boot (ObjectStorageService) if this fails.
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2024-11-17T19-35-38Z
     depends_on:
       minio:
         condition: service_healthy
@@ -61,6 +64,7 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
       S3_BUCKET: ${S3_BUCKET:-rozpost-media}
+    restart: "no"
 
   api:
     build:
@@ -88,8 +92,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+        required: false
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/health"]
       interval: 10s
@@ -162,8 +169,8 @@ services:
     ports:
       - "${REMOTION_PORT:-3100}:3100"
     depends_on:
-      minio-init:
-        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3100/health"]
       interval: 10s
