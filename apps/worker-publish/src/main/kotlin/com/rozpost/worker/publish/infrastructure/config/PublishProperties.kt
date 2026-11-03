@@ -21,5 +21,9 @@ data class PublishProperties(
         val enabled: Boolean = true,
         val pollMs: Long = 1000,
         val maxAttempts: Long = 5,
+        /** Idle PEL entries older than this are XAUTOCLAIM'd from dead consumers. */
+        val pelMinIdleMs: Long = 30_000,
+        /** Max messages to reclaim per poll. */
+        val pelClaimCount: Int = 10,
     )
 }

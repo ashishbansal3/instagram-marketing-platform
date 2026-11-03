@@ -85,7 +85,12 @@ class StreamJobQueue(
 
     fun readGroup(stream: String, count: Int = 5): List<StreamMessage> {
         ensureGroup(stream)
-        // Reclaim our PEL first — lastConsumed() never redelivers unacked failures/hangs.
+        // Cross-consumer reclaim first — ReadOffset("0") only returns *this* consumer's PEL.
+        val reclaimed = reclaimIdle(stream, count)
+        if (reclaimed.isNotEmpty()) {
+            return reclaimed
+        }
+        // Own PEL next — lastConsumed() never redelivers unacked failures/hangs.
         val pending = redis.opsForStream<String, String>().read(
             RedisConsumer.from(group, consumerName),
             StreamReadOptions.empty().count(count.toLong()),
@@ -100,11 +105,69 @@ class StreamJobQueue(
                 StreamOffset.create(stream, ReadOffset.lastConsumed()),
             ) ?: return emptyList()
         }
-        return records.map { rec ->
-            val payload = rec.value["payload"] ?: ""
-            val deliveries = deliveryCount(stream, rec.id)
-            StreamMessage(rec.id.value, payload, deliveries)
+        return records.map { rec -> toStreamMessage(stream, rec) }
+    }
+
+    /**
+     * XCLAIM idle pending entries owned by other (crashed) consumers into this worker.
+     * Without this, a dead consumer's PEL is never processed by a replacement instance
+     * (ReadOffset("0") only returns *this* consumer's pending entries).
+     */
+    fun reclaimIdle(stream: String, count: Int = props.consumer.pelClaimCount): List<StreamMessage> {
+        ensureGroup(stream)
+        val minIdle = Duration.ofMillis(props.consumer.pelMinIdleMs.coerceAtLeast(0))
+        if (minIdle.isZero || count <= 0) {
+            return emptyList()
         }
+        return try {
+            val pending = redis.opsForStream<String, String>().pending(
+                stream,
+                group,
+                org.springframework.data.domain.Range.unbounded<String>(),
+                (count * 3).toLong().coerceAtLeast(count.toLong()),
+            ) ?: return emptyList()
+            val idleIds = pending
+                .asSequence()
+                .filter { it.consumerName != consumerName }
+                .filter { !it.elapsedTimeSinceLastDelivery.isNegative && it.elapsedTimeSinceLastDelivery >= minIdle }
+                .take(count)
+                .map { it.id }
+                .toList()
+            if (idleIds.isEmpty()) {
+                return emptyList()
+            }
+            val claimed = redis.opsForStream<String, String>().claim(
+                stream,
+                group,
+                consumerName,
+                minIdle,
+                *idleIds.toTypedArray(),
+            ) ?: return emptyList()
+            if (claimed.isEmpty()) {
+                return emptyList()
+            }
+            log.info(
+                "XCLAIM stream={} group={} consumer={} minIdleMs={} count={}",
+                stream,
+                group,
+                consumerName,
+                minIdle.toMillis(),
+                claimed.size,
+            )
+            claimed.map { rec -> toStreamMessage(stream, rec) }
+        } catch (e: Exception) {
+            log.warn("XCLAIM failed stream={} err={}", stream, e.message)
+            emptyList()
+        }
+    }
+
+    private fun toStreamMessage(
+        stream: String,
+        rec: MapRecord<String, String, String>,
+    ): StreamMessage {
+        val payload = rec.value["payload"] ?: ""
+        val deliveries = deliveryCount(stream, rec.id)
+        return StreamMessage(rec.id.value, payload, deliveries)
     }
 
     fun ack(stream: String, id: String) {

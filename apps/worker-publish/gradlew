@@ -2,7 +2,10 @@
 set -e
 DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 if command -v gradle >/dev/null 2>&1; then
-  exec gradle -p "$DIR" "$@"
+  MAJOR=$(gradle -v 2>/dev/null | awk '/Gradle /{print $2}' | cut -d. -f1)
+  if [ -n "$MAJOR" ] && [ "$MAJOR" -ge 8 ] 2>/dev/null; then
+    exec gradle -p "$DIR" "$@"
+  fi
 fi
-echo "Gradle not installed locally; use Docker build." >&2
-exit 1
+# Fall back to the checked-in wrapper jar (CI / machines without a system Gradle).
+exec java -cp "$DIR/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
