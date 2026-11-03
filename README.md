@@ -27,11 +27,17 @@ META_MODE=mock   # mock | live — mocks only behind this flag; default mock for
 APP_ENV=local    # local | staging | production
 ```
 
-WhatsApp webhook: `POST http://localhost:8080/webhooks/whatsapp`  
-Hub verify: `GET http://localhost:8080/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=$WEBHOOK_VERIFY_TOKEN&hub.challenge=ok`  
-Versioned API: `GET http://localhost:8080/api/v1/health`
+WhatsApp webhook (dual paths):  
+`POST http://localhost:8080/webhooks/whatsapp` · `POST http://localhost:8080/api/v1/webhooks/whatsapp`  
+Hub verify: `GET …/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=$WEBHOOK_VERIFY_TOKEN&hub.challenge=ok`  
+Onboarding: `POST /api/v1/onboarding` · Health: `GET /api/v1/health`
 
-Smoke ingest (fixture): `./scripts/e2e-smoke.sh`
+```bash
+./scripts/e2e-smoke.sh
+# META_MODE=mock only — uses seed client 22222222-…:
+./scripts/e2e-simulate-wa-intake.sh
+./scripts/e2e-wa-webhook-ingest.sh
+```
 
 ## Layout
 

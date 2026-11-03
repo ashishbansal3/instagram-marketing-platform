@@ -14,31 +14,35 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HexFormat;
+import java.util.Set;
 
 /**
- * Verifies X-Hub-Signature-256 over raw body BEFORE JSON parse (live mode only).
+ * Reads raw body bytes and verifies X-Hub-Signature-256 BEFORE JSON parse (live mode).
+ * Covers both Meta console path and versioned /api/v1 path.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class WhatsAppSignatureFilter extends OncePerRequestFilter {
 
-    private final RozpostProperties props;
+    private static final Set<String> PATHS = Set.of(
+            "/webhooks/whatsapp",
+            "/api/v1/webhooks/whatsapp"
+    );
 
-    public WhatsAppSignatureFilter(RozpostProperties props) {
+    private final RozpostProperties props;
+    private final WhatsAppSignatureVerifier verifier;
+
+    public WhatsAppSignatureFilter(RozpostProperties props, WhatsAppSignatureVerifier verifier) {
         this.props = props;
+        this.verifier = verifier;
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !"POST".equalsIgnoreCase(request.getMethod())
-                || !"/webhooks/whatsapp".equals(request.getRequestURI());
+                || !PATHS.contains(request.getRequestURI());
     }
 
     @Override
@@ -48,24 +52,16 @@ public class WhatsAppSignatureFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         byte[] body = request.getInputStream().readAllBytes();
-        HttpServletRequest wrapped = new CachedBodyRequest(request, body);
+        CachedBodyRequest wrapped = new CachedBodyRequest(request, body);
 
         if ("live".equalsIgnoreCase(props.getMetaMode())) {
-            String secret = props.getMetaAppSecret();
             String header = request.getHeader("X-Hub-Signature-256");
-            if (secret == null || secret.isBlank() || header == null || !header.startsWith("sha256=")) {
+            if (!verifier.verify(body, header)) {
                 response.setStatus(401);
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write("{\"title\":\"Unauthorized\",\"detail\":\"missing or invalid signature\",\"status\":401}");
-                return;
-            }
-            String expected = "sha256=" + hmacSha256Hex(secret, body);
-            if (!MessageDigest.isEqual(
-                    expected.getBytes(StandardCharsets.UTF_8),
-                    header.trim().getBytes(StandardCharsets.UTF_8))) {
-                response.setStatus(401);
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write("{\"title\":\"Unauthorized\",\"detail\":\"signature mismatch\",\"status\":401}");
+                response.getWriter().write(
+                        "{\"title\":\"Unauthorized\",\"detail\":\"invalid WhatsApp signature\",\"status\":401,\"code\":\"invalid_signature\"}"
+                );
                 return;
             }
         }
@@ -73,22 +69,17 @@ public class WhatsAppSignatureFilter extends OncePerRequestFilter {
         filterChain.doFilter(wrapped, response);
     }
 
-    private static String hmacSha256Hex(String secret, byte[] body) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            return HexFormat.of().formatHex(mac.doFinal(body));
-        } catch (Exception e) {
-            throw new IllegalStateException("HMAC failure", e);
-        }
-    }
-
-    private static final class CachedBodyRequest extends HttpServletRequestWrapper {
+    /** Exposes cached raw bytes for controllers that need them. */
+    public static final class CachedBodyRequest extends HttpServletRequestWrapper {
         private final byte[] body;
 
         CachedBodyRequest(HttpServletRequest request, byte[] body) {
             super(request);
             this.body = body;
+        }
+
+        public byte[] getCachedBody() {
+            return body;
         }
 
         @Override
