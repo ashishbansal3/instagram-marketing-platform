@@ -34,6 +34,14 @@
         {
           "name": "FAL_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:FAL_API_KEY::"
+        },
+        {
+          "name": "REMOTION_INTERNAL_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:REMOTION_INTERNAL_TOKEN::"
+        },
+        {
+          "name": "INTERNAL_API_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:REPLACE_ACCOUNT_ID:secret:rozpost/app:INTERNAL_API_TOKEN::"
         }
       ],
       "healthCheck": {

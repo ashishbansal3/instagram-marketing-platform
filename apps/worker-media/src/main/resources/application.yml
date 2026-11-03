@@ -56,6 +56,7 @@ media:
     kling-api-key: ${KLING_API_KEY:}
   remotion:
     base-url: ${REMOTION_BASE_URL:${REMOTION_SERVICE_URL:http://localhost:3100}}
+    internal-token: ${REMOTION_INTERNAL_TOKEN:${INTERNAL_API_TOKEN:}}
   notify:
     api-base-url: ${NOTIFY_API_BASE_URL:http://localhost:8080}
     wa-mock-enabled: ${WA_MOCK_ENABLED:false}

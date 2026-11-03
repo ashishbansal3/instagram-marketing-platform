@@ -8,8 +8,31 @@ import { spawnSync } from "child_process";
 
 const PORT = Number(process.env.REMOTION_PORT || process.env.PORT || 3100);
 const INTERNAL_TOKEN = (process.env.REMOTION_INTERNAL_TOKEN || process.env.INTERNAL_API_TOKEN || "").trim();
+// Prefer APP_ENV — npm test / Next often set NODE_ENV=production without meaning prod deploy.
+const APP_ENV = (process.env.APP_ENV || "local").trim().toLowerCase();
+/** Production/staging must never run with an empty internal token (local/e2e keep open auth). */
+const REQUIRE_AUTH =
+  process.env.REMOTION_REQUIRE_AUTH === "true" ||
+  APP_ENV === "production" ||
+  APP_ENV === "staging" ||
+  APP_ENV === "prod";
 const MAX_CONCURRENT = Number(process.env.REMOTION_MAX_CONCURRENT || 2);
 const RENDER_TIMEOUT_MS = Number(process.env.REMOTION_RENDER_TIMEOUT_MS || 120_000);
+
+if (REQUIRE_AUTH && !INTERNAL_TOKEN) {
+  // Fail closed before accepting traffic — ECS health will stay unhealthy until secret is wired.
+  console.error(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "error",
+      service: "rozpost-remotion",
+      msg: "fatal_missing_internal_token",
+      appEnv: APP_ENV,
+      hint: "Set REMOTION_INTERNAL_TOKEN or INTERNAL_API_TOKEN (or APP_ENV=local for dogfood)",
+    }),
+  );
+  process.exit(1);
+}
 
 const app = express();
 const upload = multer({ dest: path.join(os.tmpdir(), "remotion-uploads") });
@@ -39,7 +62,7 @@ app.use("/preview", express.static(path.join(os.tmpdir(), "remotion-previews"), 
 
 function requireInternalAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   if (!INTERNAL_TOKEN) {
-    // Local/dev without secret — still require private network in production deploys.
+    // Local / META_MODE=mock dogfood only — REQUIRE_AUTH exits at boot if empty in prod.
     return next();
   }
   const header = String(req.header("X-Internal-Token") || "");
@@ -222,7 +245,13 @@ app.post(["/v1/render", "/render"], requireInternalAuth, upload.single("media"),
 });
 
 const server = app.listen(PORT, () => {
-  log("info", "listening", { port: PORT, maxConcurrent: MAX_CONCURRENT, auth: Boolean(INTERNAL_TOKEN) });
+  log("info", "listening", {
+    port: PORT,
+    maxConcurrent: MAX_CONCURRENT,
+    auth: Boolean(INTERNAL_TOKEN),
+    requireAuth: REQUIRE_AUTH,
+    appEnv: APP_ENV,
+  });
 });
 
 function shutdown(signal: string) {

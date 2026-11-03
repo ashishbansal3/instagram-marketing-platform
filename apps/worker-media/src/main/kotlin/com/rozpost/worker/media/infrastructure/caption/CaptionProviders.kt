@@ -40,6 +40,7 @@ class RemotionCaptionStrategy(
     ): CaptionResult {
         Files.createDirectories(workDir)
         val out = workDir.resolve("reel-captioned.mp4")
+        val token = props.remotion.internalToken.trim()
         try {
             val bodyBuilder = MultipartBodyBuilder()
             bodyBuilder.part("media", FileSystemResource(videoOrImage)).contentType(
@@ -52,10 +53,14 @@ class RemotionCaptionStrategy(
             bodyBuilder.part("brandName", brandName ?: "RozPost")
             bodyBuilder.part("correlationId", correlationId ?: "")
 
-            val response = http.post()
+            var req = http.post()
                 .uri("${props.remotion.baseUrl.trimEnd('/')}/v1/render")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .header("X-Correlation-Id", correlationId ?: "")
+            if (token.isNotEmpty()) {
+                req = req.header("X-Internal-Token", token)
+            }
+            val response = req
                 .body(bodyBuilder.build())
                 .retrieve()
                 .toEntity(ByteArray::class.java)
@@ -73,10 +78,14 @@ class RemotionCaptionStrategy(
                 bodyBuilder.part("locale", locale)
                 bodyBuilder.part("instructionText", instructionText ?: "")
                 bodyBuilder.part("brandName", brandName ?: "RozPost")
-                val response = http.post()
+                var legacy = http.post()
                     .uri("${props.remotion.baseUrl.trimEnd('/')}/render")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .header("X-Correlation-Id", correlationId ?: "")
+                if (token.isNotEmpty()) {
+                    legacy = legacy.header("X-Internal-Token", token)
+                }
+                val response = legacy
                     .body(bodyBuilder.build())
                     .retrieve()
                     .toEntity(ByteArray::class.java)

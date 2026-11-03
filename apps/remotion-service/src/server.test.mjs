@@ -62,12 +62,40 @@ test("ffmpeg caption/reel smoke render produces mp4", async () => {
   assert.ok(fs.statSync(outMp4).size > 1000, "mp4 too small");
 });
 
+test("production APP_ENV refuses empty internal token at boot", async () => {
+  const child = spawn("node", ["--import", "tsx", "src/server.ts"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PORT: "3998",
+      REMOTION_PORT: "3998",
+      APP_ENV: "production",
+      NODE_ENV: "development",
+      REMOTION_INTERNAL_TOKEN: "",
+      INTERNAL_API_TOKEN: "",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const code = await new Promise((resolve) => {
+    const t = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve(-1);
+    }, 15_000);
+    child.on("exit", (c) => {
+      clearTimeout(t);
+      resolve(c ?? -1);
+    });
+  });
+  assert.equal(code, 1, "expected process.exit(1) when prod auth token missing");
+});
+
 test("HTTP /health and /v1/render (ffmpeg fallback) return video", async () => {
   const port = 3100 + Math.floor(Math.random() * 1000);
   const env = {
     ...process.env,
     PORT: String(port),
     REMOTION_PORT: String(port),
+    APP_ENV: "local",
     REMOTION_INTERNAL_TOKEN: "",
   };
   const child = spawn("node", ["--import", "tsx", "src/server.ts"], {
@@ -104,6 +132,32 @@ test("HTTP /health and /v1/render (ffmpeg fallback) return video", async () => {
   assert.equal(res.status, 200, `render status ${res.status}`);
   assert.match(res.headers.get("content-type") || "", /video\/mp4/);
   assert.ok(buf.length > 1000, "render body too small");
+});
+
+test("token-required mode rejects missing X-Internal-Token", async () => {
+  const port = 3100 + Math.floor(Math.random() * 1000);
+  const secret = "ci-remotion-secret";
+  const child = spawn("node", ["--import", "tsx", "src/server.ts"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      REMOTION_PORT: String(port),
+      APP_ENV: "local",
+      REMOTION_INTERNAL_TOKEN: secret,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const ready = await waitForHealth(port, 30_000);
+  assert.equal(ready, true);
+  const denied = await fetch(`http://127.0.0.1:${port}/v1/render`, {
+    method: "POST",
+    body: new FormData(),
+  });
+  assert.equal(denied.status, 401);
+  const body = await denied.json();
+  assert.equal(body.code, "INTERNAL_AUTH_REQUIRED");
+  child.kill("SIGTERM");
 });
 
 async function waitForHealth(port, timeoutMs) {
