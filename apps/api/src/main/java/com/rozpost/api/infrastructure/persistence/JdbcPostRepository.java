@@ -2,11 +2,14 @@ package com.rozpost.api.infrastructure.persistence;
 
 import com.rozpost.api.domain.port.PostRepositoryPort;
 import com.rozpost.api.domain.post.PostStatus;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -17,6 +20,14 @@ public class JdbcPostRepository implements PostRepositoryPort {
     this.jdbc = jdbc;
   }
 
+  private static final ResultSetExtractor<Map<String, Object>> POST_ROW =
+      rs -> {
+        if (!rs.next()) {
+          return null;
+        }
+        return mapPostRow(rs);
+      };
+
   @Override
   public Optional<Map<String, Object>> findById(UUID postId) {
     return Optional.ofNullable(
@@ -26,25 +37,38 @@ public class JdbcPostRepository implements PostRepositoryPort {
                    feedback_text, retry_count, max_retries, ig_permalink, ig_media_id
             FROM posts WHERE id = ?::uuid
             """,
-            rs -> {
-              if (!rs.next()) {
-                return null;
-              }
-              Map<String, Object> m = new LinkedHashMap<>();
-              m.put("id", rs.getObject("id", UUID.class));
-              m.put("tenant_id", rs.getObject("tenant_id", UUID.class));
-              m.put("client_id", rs.getObject("client_id", UUID.class));
-              m.put("status", rs.getString("status"));
-              m.put("caption", rs.getString("caption"));
-              m.put("instruction_text", rs.getString("instruction_text"));
-              m.put("feedback_text", rs.getString("feedback_text"));
-              m.put("retry_count", rs.getInt("retry_count"));
-              m.put("max_retries", rs.getInt("max_retries"));
-              m.put("ig_permalink", rs.getString("ig_permalink"));
-              m.put("ig_media_id", rs.getString("ig_media_id"));
-              return m;
-            },
+            POST_ROW,
             postId.toString()));
+  }
+
+  @Override
+  public Optional<Map<String, Object>> findByIdAndTenantId(UUID postId, UUID tenantId) {
+    return Optional.ofNullable(
+        jdbc.query(
+            """
+            SELECT id, tenant_id, client_id, status, caption, instruction_text,
+                   feedback_text, retry_count, max_retries, ig_permalink, ig_media_id
+            FROM posts WHERE id = ?::uuid AND tenant_id = ?::uuid
+            """,
+            POST_ROW,
+            postId.toString(),
+            tenantId.toString()));
+  }
+
+  private static Map<String, Object> mapPostRow(ResultSet rs) throws SQLException {
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("id", rs.getObject("id", UUID.class));
+    m.put("tenant_id", rs.getObject("tenant_id", UUID.class));
+    m.put("client_id", rs.getObject("client_id", UUID.class));
+    m.put("status", rs.getString("status"));
+    m.put("caption", rs.getString("caption"));
+    m.put("instruction_text", rs.getString("instruction_text"));
+    m.put("feedback_text", rs.getString("feedback_text"));
+    m.put("retry_count", rs.getInt("retry_count"));
+    m.put("max_retries", rs.getInt("max_retries"));
+    m.put("ig_permalink", rs.getString("ig_permalink"));
+    m.put("ig_media_id", rs.getString("ig_media_id"));
+    return m;
   }
 
   @Override

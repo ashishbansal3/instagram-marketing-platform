@@ -97,6 +97,44 @@ class ApprovalCommandServiceTest {
         () -> service.handleButton("919876543210", postId, "approve", null, null));
   }
 
+  @Test
+  void snapshotForTenantReturnsWhenTenantMatches() {
+    UUID postId = UUID.randomUUID();
+    UUID tenantId = UUID.randomUUID();
+    UUID clientId = UUID.randomUUID();
+    when(posts.findByIdAndTenantId(postId, tenantId))
+        .thenReturn(Optional.of(post(postId, tenantId, clientId, "awaiting_approval", 0)));
+
+    var snap = service.snapshotForTenant(postId, tenantId);
+    assertEquals(postId.toString(), snap.id());
+    assertEquals("awaiting_approval", snap.status());
+  }
+
+  @Test
+  void snapshotForTenant404OnForeignTenant() {
+    UUID postId = UUID.randomUUID();
+    UUID ownerTenant = UUID.randomUUID();
+    UUID attackerTenant = UUID.randomUUID();
+    when(posts.findByIdAndTenantId(postId, attackerTenant)).thenReturn(Optional.empty());
+    // Existence under another tenant must not be distinguishable from missing.
+    when(posts.findById(postId))
+        .thenReturn(Optional.of(post(postId, ownerTenant, UUID.randomUUID(), "awaiting_approval", 0)));
+
+    ApiException ex =
+        assertThrows(ApiException.class, () -> service.snapshotForTenant(postId, attackerTenant));
+    assertEquals("post_not_found", ex.getCode());
+    assertEquals(404, ex.getStatus().value());
+  }
+
+  @Test
+  void snapshotForTenantRejectsNullTenant() {
+    ApiException ex =
+        assertThrows(
+            ApiException.class, () -> service.snapshotForTenant(UUID.randomUUID(), null));
+    assertEquals("missing_tenant", ex.getCode());
+    assertEquals(400, ex.getStatus().value());
+  }
+
   private static Map<String, Object> post(
       UUID id, UUID tenantId, UUID clientId, String status, int retry) {
     Map<String, Object> m = new HashMap<>();
